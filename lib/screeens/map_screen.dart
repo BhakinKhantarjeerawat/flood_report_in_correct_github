@@ -5,6 +5,7 @@ import 'package:flutter_map_marker_cluster/flutter_map_marker_cluster.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:location/location.dart';
 import '../models/flood.dart';
+import 'flood_report_form.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -26,7 +27,8 @@ class _MapScreenState extends State<MapScreen> {
     _initializeMap();
     
     // Add a timeout to prevent infinite loading
-    Future.delayed(const Duration(seconds: 10), () {
+    //todo: check the delay time
+    Future.delayed(const Duration(seconds: 1), () {
       if (mounted && _isLoading) {
         setState(() {
           _isLoading = false;
@@ -341,6 +343,23 @@ class _MapScreenState extends State<MapScreen> {
     }
 
     return Scaffold(
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () async {
+          final result = await Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => const FloodReportForm(),
+            ),
+          );
+          if (result != null && result is Flood) {
+            // TODO: Add the new flood report to the map
+            _showErrorSnackBar('New flood report added! (TODO: Update map)');
+          }
+        },
+        backgroundColor: const Color(0xFF1976D2),
+        foregroundColor: Colors.white,
+        icon: const Icon(Icons.add_location),
+        label: const Text('Report Flood'),
+      ),
       body: Stack(
         children: [
           // Map with marker clustering
