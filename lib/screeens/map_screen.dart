@@ -1,21 +1,23 @@
 import 'package:flood_marker/fake_data/flood_data.dart';
+import 'package:flood_marker/widgets/legend_overlay_widget.dart';
+import 'package:flood_marker/providers/map_controller_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map_marker_cluster/flutter_map_marker_cluster.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:location/location.dart';
 import '../models/flood.dart';
 import 'flood_report_form.dart';
 
-class MapScreen extends StatefulWidget {
+class MapScreen extends ConsumerStatefulWidget {
   const MapScreen({super.key});
 
   @override
-  State<MapScreen> createState() => _MapScreenState();
+  ConsumerState<MapScreen> createState() => _MapScreenState();
 }
 
-class _MapScreenState extends State<MapScreen> {
-  final MapController _mapController = MapController();
+class _MapScreenState extends ConsumerState<MapScreen> {
   final Location _location = Location();
   bool _isLoading = true;
   LatLng? _currentLocation;
@@ -325,10 +327,10 @@ class _MapScreenState extends State<MapScreen> {
 
   void _goToCurrentLocation() {
     if (_currentLocation != null) {
-      _mapController.move(_currentLocation!, 10.0); // Zoom to show Bangkok area
+      ref.read(mapControllerProvider.notifier).moveToLocation(_currentLocation!, zoom: 10.0);
     } else {
       // If no current location, go to Bangkok center
-      _mapController.move(const LatLng(13.7563, 100.5018), 10.0);
+      ref.read(mapControllerProvider.notifier).moveToLocation(const LatLng(13.7563, 100.5018), zoom: 10.0);
     }
   }
 
@@ -364,7 +366,7 @@ class _MapScreenState extends State<MapScreen> {
         children: [
           // Map with marker clustering
           FlutterMap(
-            mapController: _mapController,
+            mapController: ref.watch(mapControllerProvider),
             options: MapOptions(
               initialCenter: _currentLocation ?? const LatLng(13.7563, 100.5018),
               initialZoom: 10.0, // Better zoom level to show Bangkok area
@@ -468,74 +470,24 @@ class _MapScreenState extends State<MapScreen> {
             ),
           ),
           
-          // Legend overlay
-          Positioned(
-            bottom: MediaQuery.of(context).padding.bottom + 20,
-            right: 16,
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 10,
-                    offset: const Offset(0, 5),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Legend',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  _buildLegendItem('High Risk (Severe)', Colors.red),
-                  _buildLegendItem('Medium Risk (Blocked)', Colors.orange),
-                  _buildLegendItem('Low Risk (Passable)', Colors.yellow),
-                ],
-              ),
-            ),
-          ),
+          // LegendOverlayWidget
+         const LegendOverlayWidget()
         ],
       ),
     );
   }
 
-  Widget _buildLegendItem(String label, Color color) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 16,
-            height: 16,
-            decoration: BoxDecoration(
-              color: color,
-              shape: BoxShape.circle,
-              border: Border.all(color: Colors.white, width: 1),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            label,
-            style: const TextStyle(fontSize: 12),
-          ),
-        ],
-      ),
-    );
-  }
+  
 
   @override
   void dispose() {
-    _mapController.dispose();
+    // Map controller is managed by Riverpod, no need to dispose here
     super.dispose();
   }
 }
+
+
+
+
+
+
