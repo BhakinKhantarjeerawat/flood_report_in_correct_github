@@ -11,7 +11,7 @@ class UpdateReminderScreen extends StatefulWidget {
 
 class _UpdateReminderScreenState extends State<UpdateReminderScreen> {
   String _currentVersion = '';
-  bool _isLoading = true;
+  bool _isLoading = false;
 
   @override
   void initState() {

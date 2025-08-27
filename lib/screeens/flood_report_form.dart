@@ -6,6 +6,7 @@ import 'package:geocoding/geocoding.dart';
 import 'dart:io';
 import '../models/flood.dart';
 
+
 class FloodReportForm extends StatefulWidget {
   const FloodReportForm({super.key});
 
@@ -189,13 +190,47 @@ class _FloodReportFormState extends State<FloodReportForm> {
     }
   }
 
+  void _showClearPhotosDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Clear All Photos'),
+          content: const Text('Are you sure you want to remove all photos? This action cannot be undone.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                setState(() {
+                  _selectedImages.clear();
+                });
+                Navigator.of(context).pop();
+                _showSuccessSnackBar('All photos cleared');
+              },
+              style: TextButton.styleFrom(foregroundColor: Colors.red),
+              child: const Text('Clear All'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   Future<void> _submitReport() async {
     if (!_formKey.currentState!.validate()) {
       return;
     }
 
     if (_latitude == null || _longitude == null) {
-      _showErrorSnackBar('Location is required');
+      _showErrorSnackBar('Location is required. Please wait for location to load or refresh.');
+      return;
+    }
+
+    if (_selectedImages.isEmpty) {
+      _showErrorSnackBar('Please add at least one photo to document the flooding.');
       return;
     }
 
@@ -211,6 +246,10 @@ class _FloodReportFormState extends State<FloodReportForm> {
       int? depthCm;
       if (_depthController.text.isNotEmpty) {
         depthCm = int.tryParse(_depthController.text);
+        if (depthCm == null || depthCm < 0 || depthCm > 1000) {
+          _showErrorSnackBar('Invalid depth value. Please enter a number between 0-1000 cm.');
+          return;
+        }
       }
 
       // Create flood report
@@ -528,11 +567,7 @@ class _FloodReportFormState extends State<FloodReportForm> {
                 ),
                 if (_selectedImages.isNotEmpty)
                   TextButton.icon(
-                    onPressed: () {
-                      setState(() {
-                        _selectedImages.clear();
-                      });
-                    },
+                    onPressed: _isLoading ? null : () => _showClearPhotosDialog(),
                     icon: const Icon(Icons.clear_all),
                     label: const Text('Clear All'),
                     style: TextButton.styleFrom(
@@ -623,18 +658,24 @@ class _FloodReportFormState extends State<FloodReportForm> {
   }
 
   Widget _buildSubmitButton() {
+    final bool canSubmit = !_isLoading && 
+                           !_isLocationLoading && 
+                           _latitude != null && 
+                           _longitude != null &&
+                           _selectedImages.isNotEmpty;
+    
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
-        onPressed: (_isLoading || _isLocationLoading) ? null : _submitReport,
+        onPressed: canSubmit ? _submitReport : null,
         style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF1976D2),
+          backgroundColor: canSubmit ? const Color(0xFF1976D2) : Colors.grey,
           foregroundColor: Colors.white,
           padding: const EdgeInsets.symmetric(vertical: 16),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
-          elevation: 3,
+          elevation: canSubmit ? 3 : 0,
         ),
         child: _isLoading
             ? const Row(
@@ -652,14 +693,14 @@ class _FloodReportFormState extends State<FloodReportForm> {
                   Text('Submitting Report...'),
                 ],
               )
-            : const Row(
+            : Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.send),
-                  SizedBox(width: 8),
+                  Icon(canSubmit ? Icons.send : Icons.info_outline),
+                  const SizedBox(width: 8),
                   Text(
-                    'Submit Flood Report',
-                    style: TextStyle(
+                    canSubmit ? 'Submit Flood Report' : 'Complete Required Fields',
+                    style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                     ),
