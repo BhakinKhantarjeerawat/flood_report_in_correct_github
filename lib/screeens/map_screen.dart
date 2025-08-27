@@ -390,26 +390,64 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     }
 
     return Scaffold(
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () async {
-          final result = await Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (context) => const FloodReportForm(),
-            ),
-          );
-          if (result != null && result is Flood) {
-            // ✅ Add the new flood report to the map
-            debugPrint('🗺️ Form returned Flood object: ${result.id} at ${result.lat}, ${result.lng}');
-            _addNewFloodReport(result);
-            _showSuccessSnackBar('New flood report added to map!');
-          } else {
-            debugPrint('🗺️ Form returned: $result (type: ${result.runtimeType})');
-          }
-        },
-        backgroundColor: const Color(0xFF1976D2),
-        foregroundColor: Colors.white,
-        icon: const Icon(Icons.add_location),
-        label: const Text('Report Flood'),
+      floatingActionButton: Column(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          // Zoom In Button
+          FloatingActionButton(
+            onPressed: () {
+              // Zoom in by moving to current location with higher zoom
+              final currentLocation = _currentLocation ?? const LatLng(13.7563, 100.5018);
+              ref.read(mapControllerProvider.notifier).moveToLocation(
+                currentLocation,
+                zoom: 15.0, // Zoom in to street level
+              );
+            },
+            backgroundColor: Colors.white,
+            foregroundColor: Colors.blue,
+            heroTag: 'zoomIn',
+            child: const Icon(Icons.zoom_in),
+          ),
+          const SizedBox(height: 16),
+          // Zoom Out Button
+          FloatingActionButton(
+            onPressed: () {
+              // Zoom out by moving to current location with lower zoom
+              final currentLocation = _currentLocation ?? const LatLng(13.7563, 100.5018);
+              ref.read(mapControllerProvider.notifier).moveToLocation(
+                currentLocation,
+                zoom: 8.0, // Zoom out to city level
+              );
+            },
+            backgroundColor: Colors.white,
+            foregroundColor: Colors.blue,
+            heroTag: 'zoomOut',
+            child: const Icon(Icons.zoom_out),
+          ),
+          const SizedBox(height: 16),
+          // Report Flood Button
+          FloatingActionButton.extended(
+            onPressed: () async {
+              final result = await Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const FloodReportForm(),
+                ),
+              );
+              if (result != null && result is Flood) {
+                // ✅ Add the new flood report to the map
+                debugPrint('🗺️ Form returned Flood object: ${result.id} at ${result.lat}, ${result.lng}');
+                _addNewFloodReport(result);
+                _showSuccessSnackBar('New flood report added to map!');
+              } else {
+                debugPrint('🗺️ Form returned: $result (type: ${result.runtimeType})');
+              }
+            },
+            backgroundColor: const Color(0xFF1976D2),
+            foregroundColor: Colors.white,
+            icon: const Icon(Icons.add_location),
+            label: const Text('Report Flood'),
+          ),
+        ],
       ),
       body: Stack(
         children: [
@@ -513,6 +551,35 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                       ),
                     ),
                   ),
+                  // Marker count badge
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.blue,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: Colors.white, width: 2),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.location_on,
+                          color: Colors.white,
+                          size: 16,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          '${_markers.length}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
                   IconButton(
                     onPressed: _goToCurrentLocation,
                     icon: const Icon(
@@ -527,7 +594,68 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           ),
           
           // LegendOverlayWidget
-        //  const LegendOverlayWidget()
+        //  const LegendOverlayWidget(),
+          
+          // Marker count widget (bottom left)
+          Positioned(
+            bottom: 100, // Above the floating action buttons
+            left: 16,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(25),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.2),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+                border: Border.all(color: Colors.blue.withOpacity(0.3), width: 2),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: const BoxDecoration(
+                      color: Colors.blue,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.location_on,
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        'Total Reports',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.grey,
+                        ),
+                      ),
+                      Text(
+                        '${_markers.length}',
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.blue,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );
