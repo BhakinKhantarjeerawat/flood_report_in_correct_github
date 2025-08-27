@@ -6,8 +6,16 @@ import 'map_controller_provider.dart';
 
 /// Mock Map Controller for testing and development
 /// This allows you to override the real map controller in ProviderScope
-class MockMapControllerNotifier extends StateNotifier<MapController> {
-  MockMapControllerNotifier() : super(MapController());
+class MockMapControllerNotifier extends MapControllerNotifier {
+  MockMapControllerNotifier() : super() {
+    debugPrint('🗺️ Mock Map Controller: Created - will move to Bangkok center');
+    // Automatically move to Bangkok center when created
+    Future.microtask(() {
+      if (mounted) {
+        moveToBangkok();
+      }
+    });
+  }
 
   // Mock data for testing
   static const LatLng _mockBangkokCenter = LatLng(13.7563, 100.5018);

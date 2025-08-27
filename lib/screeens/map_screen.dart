@@ -336,6 +336,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 
   @override
   Widget build(BuildContext context) {
+    debugPrint('🗺️ MapScreen: Building with loading: $_isLoading, location: $_currentLocation');
+    
     if (_isLoading) {
       return const Scaffold(
         body: Center(
@@ -365,6 +367,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       body: Stack(
         children: [
           // Map with marker clustering
+          // Note: mapControllerProvider is overridden in main.dart with MockMapControllerNotifier
           FlutterMap(
             mapController: ref.watch(mapControllerProvider),
             options: MapOptions(

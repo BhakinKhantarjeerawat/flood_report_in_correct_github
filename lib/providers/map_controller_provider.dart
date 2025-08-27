@@ -1,9 +1,12 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 
 class MapControllerNotifier extends StateNotifier<MapController> {
-  MapControllerNotifier() : super(MapController());
+  MapControllerNotifier() : super(MapController()) {
+    debugPrint('🗺️ MapControllerNotifier: Created new instance');
+  }
 
   // Move to specific location
   void moveToLocation(LatLng location, {double? zoom}) {
@@ -26,5 +29,8 @@ class MapControllerNotifier extends StateNotifier<MapController> {
 
 // Provider for the map controller
 final mapControllerProvider = StateNotifierProvider<MapControllerNotifier, MapController>(
-  (ref) => MapControllerNotifier(),
+  (ref) {
+    debugPrint('🗺️ mapControllerProvider: Creating new MapControllerNotifier');
+    return MapControllerNotifier();
+  },
 );
