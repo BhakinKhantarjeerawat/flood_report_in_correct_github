@@ -1,3 +1,4 @@
+import 'package:flood_marker/fake_data/flood_data.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map_marker_cluster/flutter_map_marker_cluster.dart';
@@ -19,144 +20,22 @@ class _MapScreenState extends State<MapScreen> {
   LatLng? _currentLocation;
   List<Marker> _markers = [];
   
-  // Sample flood markers data - replace with your actual data
-  final List<Flood> _floodData = [
-    Flood(
-      id: '1',
-      lat: 13.7563,
-      lng: 100.5018,
-      severity: 'severe',
-      depthCm: 50,
-      note: 'Heavy flooding in downtown area',
-      createdAt: DateTime.now().subtract(const Duration(hours: 2)),
-      expiresAt: DateTime.now().add(const Duration(hours: 4)),
-      confirms: 5,
-      flags: 0,
-      status: 'active',
-    ),
-    Flood(
-      id: '2',
-      lat: 13.7563,
-      lng: 100.5018,
-      severity: 'blocked',
-      depthCm: 30,
-      note: 'Moderate flooding in residential area',
-      createdAt: DateTime.now().subtract(const Duration(hours: 1)),
-      expiresAt: DateTime.now().add(const Duration(hours: 5)),
-      confirms: 3,
-      flags: 0,
-      status: 'active',
-    ),
-    Flood(
-      id: '3',
-      lat: 13.7563,
-      lng: 100.5018,
-      severity: 'passable',
-      depthCm: 15,
-      note: 'Minor flooding in park area',
-      createdAt: DateTime.now().subtract(const Duration(minutes: 30)),
-      expiresAt: DateTime.now().add(const Duration(hours: 5, minutes: 30)),
-      confirms: 1,
-      flags: 0,
-      status: 'active',
-    ),
-    Flood(
-      id: '4',
-      lat: 13.7563,
-      lng: 100.5018,
-      severity: 'severe',
-      depthCm: 60,
-      note: 'Severe flooding in industrial zone',
-      createdAt: DateTime.now().subtract(const Duration(hours: 3)),
-      expiresAt: DateTime.now().add(const Duration(hours: 3)),
-      confirms: 7,
-      flags: 1,
-      status: 'active',
-    ),
-    Flood(
-      id: '5',
-      lat: 13.7563,
-      lng: 100.5018,
-      severity: 'blocked',
-      depthCm: 35,
-      note: 'Moderate flooding in shopping district',
-      createdAt: DateTime.now().subtract(const Duration(hours: 1, minutes: 30)),
-      expiresAt: DateTime.now().add(const Duration(hours: 4, minutes: 30)),
-      confirms: 4,
-      flags: 0,
-      status: 'active',
-    ),
-    Flood(
-      id: '6',
-      lat: 13.7563,
-      lng: 100.5018,
-      severity: 'passable',
-      depthCm: 20,
-      note: 'Minor flooding in residential area',
-      createdAt: DateTime.now().subtract(const Duration(minutes: 45)),
-      expiresAt: DateTime.now().add(const Duration(hours: 5, minutes: 15)),
-      confirms: 2,
-      flags: 0,
-      status: 'active',
-    ),
-    Flood(
-      id: '7',
-      lat: 13.7563,
-      lng: 100.5018,
-      severity: 'severe',
-      depthCm: 70,
-      note: 'Critical flooding in hospital area',
-      createdAt: DateTime.now().subtract(const Duration(hours: 4)),
-      expiresAt: DateTime.now().add(const Duration(hours: 2)),
-      confirms: 8,
-      flags: 2,
-      status: 'active',
-    ),
-    Flood(
-      id: '8',
-      lat: 13.7563,
-      lng: 100.5018,
-      severity: 'blocked',
-      depthCm: 40,
-      note: 'Moderate flooding in school area',
-      createdAt: DateTime.now().subtract(const Duration(hours: 2, minutes: 15)),
-      expiresAt: DateTime.now().add(const Duration(hours: 3, minutes: 45)),
-      confirms: 6,
-      flags: 0,
-      status: 'active',
-    ),
-    Flood(
-      id: '9',
-      lat: 13.7563,
-      lng: 100.5018,
-      severity: 'passable',
-      depthCm: 18,
-      note: 'Minor flooding in park area',
-      createdAt: DateTime.now().subtract(const Duration(minutes: 20)),
-      expiresAt: DateTime.now().add(const Duration(hours: 5, minutes: 40)),
-      confirms: 1,
-      flags: 0,
-      status: 'active',
-    ),
-    Flood(
-      id: '10',
-      lat: 13.7563,
-      lng: 100.5018,
-      severity: 'severe',
-      depthCm: 55,
-      note: 'Severe flooding in airport area',
-      createdAt: DateTime.now().subtract(const Duration(hours: 5)),
-      expiresAt: DateTime.now().add(const Duration(hours: 1)),
-      confirms: 9,
-      flags: 1,
-      status: 'active',
-    ),
-  ];
-
   @override
   void initState() {
     super.initState();
     _initializeMap();
+    
+    // Add a timeout to prevent infinite loading
+    Future.delayed(const Duration(seconds: 10), () {
+      if (mounted && _isLoading) {
+        setState(() {
+          _isLoading = false;
+          _currentLocation = const LatLng(13.7563, 100.5018); // Bangkok center
+        });
+        _generateMarkers();
+        _showErrorSnackBar('Location timeout - showing Bangkok area');
+      }
+    });
   }
 
   Future<void> _initializeMap() async {
@@ -167,6 +46,12 @@ class _MapScreenState extends State<MapScreen> {
         serviceEnabled = await _location.requestService();
         if (!serviceEnabled) {
           _showErrorSnackBar('Location service is disabled');
+          // Continue with default location
+          _currentLocation = const LatLng(13.7563, 100.5018); // Bangkok center
+          _generateMarkers();
+          setState(() {
+            _isLoading = false;
+          });
           return;
         }
       }
@@ -176,6 +61,12 @@ class _MapScreenState extends State<MapScreen> {
         permissionGranted = await _location.requestPermission();
         if (permissionGranted != PermissionStatus.granted) {
           _showErrorSnackBar('Location permission denied');
+          // Continue with default location
+          _currentLocation = const LatLng(13.7563, 100.5018); // Bangkok center
+          _generateMarkers();
+          setState(() {
+            _isLoading = false;
+          });
           return;
         }
       }
@@ -192,8 +83,8 @@ class _MapScreenState extends State<MapScreen> {
       });
     } catch (e) {
       _showErrorSnackBar('Error getting location: $e');
-      // Set default location if location fails
-      _currentLocation = const LatLng(13.7563, 100.5018); // Bangkok
+      // Set default location if location fails - Center of Bangkok
+      _currentLocation = const LatLng(13.7563, 100.5018); // Bangkok center
       _generateMarkers();
       setState(() {
         _isLoading = false;
@@ -202,7 +93,7 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   void _generateMarkers() {
-    _markers = _floodData.map((flood) {
+    _markers = floodData.map((flood) {
       return Marker(
         point: LatLng(flood.lat, flood.lng),
         width: 40,
@@ -362,11 +253,20 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   String _getLocationName(double lat, double lng) {
-    // Simple location naming - you can replace this with reverse geocoding
-    if (lat == 13.7563 && lng == 100.5018) {
-      return 'Bangkok';
-    }
-    return 'Location (${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)})';
+    // Bangkok area location naming - you can replace this with reverse geocoding
+    if (lat == 13.7466 && lng == 100.5347) return 'Siam';
+    if (lat == 13.7383 && lng == 100.5608) return 'Sukhumvit';
+    if (lat == 13.7310 && lng == 100.5440) return 'Lumpini Park';
+    if (lat == 13.7246 && lng == 100.5270) return 'Silom';
+    if (lat == 13.7414 && lng == 100.5084) return 'Chinatown';
+    if (lat == 13.7587 && lng == 100.5374) return 'Victory Monument';
+    if (lat == 13.8288 && lng == 100.5564) return 'Chatuchak';
+    if (lat == 13.9126 && lng == 100.6068) return 'Don Mueang';
+    if (lat == 13.7563 && lng == 100.4848) return 'Thonburi';
+    if (lat == 13.6900 && lng == 100.7501) return 'Suvarnabhumi Airport';
+    
+    // Default for other locations
+    return 'Bangkok Area';
   }
 
   String _getSeverityDisplayName(String severity) {
@@ -423,7 +323,10 @@ class _MapScreenState extends State<MapScreen> {
 
   void _goToCurrentLocation() {
     if (_currentLocation != null) {
-      _mapController.move(_currentLocation!, 15.0);
+      _mapController.move(_currentLocation!, 10.0); // Zoom to show Bangkok area
+    } else {
+      // If no current location, go to Bangkok center
+      _mapController.move(const LatLng(13.7563, 100.5018), 10.0);
     }
   }
 
@@ -445,7 +348,7 @@ class _MapScreenState extends State<MapScreen> {
             mapController: _mapController,
             options: MapOptions(
               initialCenter: _currentLocation ?? const LatLng(13.7563, 100.5018),
-              initialZoom: 12.0,
+              initialZoom: 10.0, // Better zoom level to show Bangkok area
               minZoom: 5.0,
               maxZoom: 18.0,
               onMapReady: () {
