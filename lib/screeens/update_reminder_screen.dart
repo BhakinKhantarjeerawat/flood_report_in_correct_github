@@ -11,7 +11,6 @@ class UpdateReminderScreen extends StatefulWidget {
 
 class _UpdateReminderScreenState extends State<UpdateReminderScreen> {
   String _currentVersion = '';
-  bool _isLoading = false;
 
   @override
   void initState() {
@@ -24,12 +23,10 @@ class _UpdateReminderScreenState extends State<UpdateReminderScreen> {
       PackageInfo packageInfo = await PackageInfo.fromPlatform();
       setState(() {
         _currentVersion = packageInfo.version;
-        _isLoading = false;
       });
     } catch (e) {
       setState(() {
         _currentVersion = 'Unknown';
-        _isLoading = false;
       });
     }
   }

@@ -5,18 +5,18 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 void main() async {
   runApp(
-  const  ProviderScope(
-      overrides: [
+    const ProviderScope(
+      overrides: const [
         // 🧪 PROVIDER OVERRIDE EXAMPLES:
         
         // 1. ✅ EASY START: Mock Map Controller for Testing & Debugging
         // mapControllerProvider.overrideWith((ref) => MockMapControllerNotifier()),
         
         // 2. Override with Custom Implementation
-        // mapControllerProvider.overrideWith((ref) => CustomMapControllerNotifier()),
+        // mapControllerProvider.overrideWith((ref) => CustomMapControllerProvider()),
         
         // 3. Override with Different Data
-        // floodDataProvider.overrideWith((ref) => TestFloodData()),
+        // floodDataProvider.overrideWith((ref) => TestFloodDataProvider()),
         
         // 4. Override Multiple Providers
         // locationProvider.overrideWith((ref) => MockLocationProvider()),

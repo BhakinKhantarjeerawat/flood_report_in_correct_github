@@ -463,7 +463,7 @@ class _FloodReportFormState extends State<FloodReportForm> {
               child: OutlinedButton.icon(
                 onPressed: _isLocationLoading ? null : _getCurrentLocation,
                 icon: const Icon(Icons.refresh),
-                label: Text(useMockLocation ? 'Refresh Mock Location' : 'Refresh GPS Location'),
+                label: const Text(useMockLocation ? 'Refresh Mock Location' : 'Refresh GPS Location'),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: const Color(0xFF1976D2),
                 ),
