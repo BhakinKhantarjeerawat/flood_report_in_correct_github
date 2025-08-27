@@ -26,7 +26,7 @@ void main() async {
         //   mapControllerProvider.overrideWith((ref) => MockMapControllerNotifier()),
         // }
       ],
-      child: const MyApp(),
+      child:  MyApp(),
     ),
   );
 }

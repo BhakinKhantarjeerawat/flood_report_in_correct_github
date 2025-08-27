@@ -1,5 +1,4 @@
 import 'package:flood_marker/fake_data/flood_data.dart';
-import 'package:flood_marker/widgets/legend_overlay_widget.dart';
 import 'package:flood_marker/providers/map_controller_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';

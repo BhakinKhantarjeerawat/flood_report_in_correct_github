@@ -4,6 +4,7 @@ import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:location/location.dart' as location_package;
 import 'package:geocoding/geocoding.dart';
 import 'dart:io';
+import 'dart:async';
 import '../models/flood.dart';
 
 // 🎛️ DEVELOPMENT TOGGLE: Easy switch between mock and real GPS
@@ -36,6 +37,9 @@ class _FloodReportFormState extends State<FloodReportForm> {
   double? _latitude;
   double? _longitude;
   String _locationName = 'Getting location...';
+  
+  // Anti-spam protection
+  DateTime? _lastSubmissionTime;
   
   // Severity options
   static const List<Map<String, dynamic>> _severityOptions = [
@@ -87,35 +91,77 @@ class _FloodReportFormState extends State<FloodReportForm> {
         // 📍 REAL GPS: Using actual device location
         location_package.Location location = location_package.Location();
         
-        // Check permissions
-        bool serviceEnabled = await location.serviceEnabled();
-        if (!serviceEnabled) {
-          serviceEnabled = await location.requestService();
+        try {
+          // Check permissions with timeout
+          bool serviceEnabled = await location.serviceEnabled().timeout(
+            const Duration(seconds: 10),
+            onTimeout: () {
+              throw TimeoutException('Location service check timed out');
+            },
+          );
+          
           if (!serviceEnabled) {
-            _showErrorSnackBar('Location service is disabled');
-            return;
+            serviceEnabled = await location.requestService().timeout(
+              const Duration(seconds: 15),
+              onTimeout: () {
+                throw TimeoutException('Location service request timed out');
+              },
+            );
+            if (!serviceEnabled) {
+              _showErrorSnackBar('Location service is disabled. Please enable GPS in device settings.');
+              return;
+            }
           }
-        }
 
-        location_package.PermissionStatus permissionGranted = await location.hasPermission();
-        if (permissionGranted == location_package.PermissionStatus.denied) {
-          permissionGranted = await location.requestPermission();
-          if (permissionGranted != location_package.PermissionStatus.granted) {
-            _showErrorSnackBar('Location permission denied');
-            return;
+          location_package.PermissionStatus permissionGranted = await location.hasPermission().timeout(
+            const Duration(seconds: 10),
+            onTimeout: () {
+              throw TimeoutException('Permission check timed out');
+            },
+          );
+          
+          if (permissionGranted == location_package.PermissionStatus.denied) {
+            permissionGranted = await location.requestPermission().timeout(
+              const Duration(seconds: 15),
+              onTimeout: () {
+                throw TimeoutException('Permission request timed out');
+              },
+            );
+            if (permissionGranted != location_package.PermissionStatus.granted) {
+              _showErrorSnackBar('Location permission denied. Please grant location access in app settings.');
+              return;
+            }
           }
+
+          // Get current location with timeout
+          location_package.LocationData currentLocation = await location.getLocation().timeout(
+            const Duration(seconds: 20),
+            onTimeout: () {
+              throw TimeoutException('Getting location timed out. Please try again.');
+            },
+          );
+          
+          // Validate coordinates
+          if (currentLocation.latitude == null || currentLocation.longitude == null) {
+            throw Exception('Invalid location data received');
+          }
+          
+          setState(() {
+            _latitude = currentLocation.latitude;
+            _longitude = currentLocation.longitude;
+            _isLocationLoading = false;
+          });
+
+          // Get location name
+          await _getLocationName();
+          
+        } on TimeoutException catch (e) {
+          _showErrorSnackBar('Location timeout: ${e.message}');
+          debugPrint('⏰ Location timeout: $e');
+        } catch (e) {
+          _showErrorSnackBar('Location error: ${_getUserFriendlyErrorMessage(e)}');
+          debugPrint('📍 Location error: $e');
         }
-
-        // Get current location
-        location_package.LocationData currentLocation = await location.getLocation();
-        setState(() {
-          _latitude = currentLocation.latitude;
-          _longitude = currentLocation.longitude;
-          _isLocationLoading = false;
-        });
-
-        // Get location name
-        await _getLocationName();
       }
       
     } catch (e) {
@@ -221,6 +267,32 @@ class _FloodReportFormState extends State<FloodReportForm> {
     }
   }
 
+  void _showWarningSnackBar(String message) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: Colors.orange,
+          duration: const Duration(seconds: 4),
+        ),
+      );
+    }
+  }
+
+  String _getUserFriendlyErrorMessage(dynamic error) {
+    if (error.toString().contains('permission')) {
+      return 'Permission denied. Please check app permissions.';
+    } else if (error.toString().contains('network') || error.toString().contains('connection')) {
+      return 'Network error. Please check your internet connection.';
+    } else if (error.toString().contains('timeout')) {
+      return 'Request timed out. Please try again.';
+    } else if (error.toString().contains('storage') || error.toString().contains('disk')) {
+      return 'Storage error. Please check available space.';
+    } else {
+      return 'An unexpected error occurred. Please try again.';
+    }
+  }
+
   void _showClearPhotosDialog() {
     showDialog(
       context: context,
@@ -251,67 +323,133 @@ class _FloodReportFormState extends State<FloodReportForm> {
   }
 
   Future<void> _submitReport() async {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
-
-    if (_latitude == null || _longitude == null) {
-      _showErrorSnackBar('Location is required. Please wait for location to load or refresh.');
-      return;
-    }
-
-    if (_selectedImages.isEmpty) {
-      _showErrorSnackBar('Please add at least one photo to document the flooding.');
-      return;
-    }
-
-    setState(() {
-      _isLoading = true;
-    });
-
     try {
-      // Generate unique ID
-      String id = DateTime.now().millisecondsSinceEpoch.toString();
-      
-      // Parse depth if provided
+      // Enhanced validation with better error messages
+      if (!_formKey.currentState!.validate()) {
+        _showErrorSnackBar('Please fix the form errors above before submitting.');
+        return;
+      }
+
+      // Location validation with detailed feedback
+      if (_latitude == null || _longitude == null) {
+        _showErrorSnackBar('Location is required. Please wait for location to load or refresh.');
+        return;
+      }
+
+      // Validate location coordinates are reasonable
+      if (_latitude! < -90 || _latitude! > 90 || _longitude! < -180 || _longitude! > 180) {
+        _showErrorSnackBar('Invalid location coordinates. Please refresh your location.');
+        return;
+      }
+
+      // Photo validation with helpful guidance
+      if (_selectedImages.isEmpty) {
+        _showErrorSnackBar('Please add at least one photo to document the flooding situation.');
+        return;
+      }
+
+      // Validate photo files still exist
+      List<File> validImages = [];
+      for (File image in _selectedImages) {
+        if (await image.exists()) {
+          validImages.add(image);
+        } else {
+          debugPrint('⚠️ Photo file no longer exists: ${image.path}');
+        }
+      }
+
+      if (validImages.isEmpty) {
+        _showErrorSnackBar('All selected photos are no longer available. Please select photos again.');
+        return;
+      }
+
+      if (validImages.length != _selectedImages.length) {
+        _showWarningSnackBar('Some photos are no longer available. Proceeding with ${validImages.length} valid photos.');
+        setState(() {
+          _selectedImages = validImages;
+        });
+      }
+
+      // Enhanced depth validation
       int? depthCm;
       if (_depthController.text.isNotEmpty) {
         depthCm = int.tryParse(_depthController.text);
-        if (depthCm == null || depthCm < 0 || depthCm > 1000) {
-          _showErrorSnackBar('Invalid depth value. Please enter a number between 0-1000 cm.');
+        if (depthCm == null) {
+          _showErrorSnackBar('Depth must be a valid number. Please enter a whole number (e.g., 25).');
+          return;
+        }
+        if (depthCm < 0) {
+          _showErrorSnackBar('Depth cannot be negative. Please enter a positive number.');
+          return;
+        }
+        if (depthCm > 1000) {
+          _showErrorSnackBar('Depth seems too high (${depthCm} cm). Please verify the measurement.');
           return;
         }
       }
 
-      // Create flood report
+      // Note length validation
+      String note = _noteController.text.trim();
+      if (note.isNotEmpty && note.length > 500) {
+        _showErrorSnackBar('Note is too long (${note.length} characters). Maximum 500 characters allowed.');
+        return;
+      }
+
+      // Check if user is trying to submit too quickly (anti-spam)
+      if (_lastSubmissionTime != null) {
+        final timeSinceLastSubmission = DateTime.now().difference(_lastSubmissionTime!);
+        if (timeSinceLastSubmission.inSeconds < 30) {
+          _showErrorSnackBar('Please wait ${30 - timeSinceLastSubmission.inSeconds} seconds before submitting another report.');
+          return;
+        }
+      }
+
+      setState(() {
+        _isLoading = true;
+      });
+
+      // Generate unique ID with timestamp
+      String id = DateTime.now().millisecondsSinceEpoch.toString();
+      
+      // Create flood report with validation
       Flood floodReport = Flood(
         id: id,
         lat: _latitude!,
         lng: _longitude!,
         severity: _selectedSeverity,
         depthCm: depthCm,
-        note: _noteController.text.trim().isEmpty ? null : _noteController.text.trim(),
-        photoUrls: _selectedImages.map((file) => file.path).toList(),
+        note: note.isEmpty ? null : note,
+        photoUrls: validImages.map((file) => file.path).toList(),
         createdAt: DateTime.now(),
-        expiresAt: DateTime.now().add(const Duration(hours: 6)), // 6 hours expiry
+        expiresAt: DateTime.now().add(const Duration(hours: 6)),
         confirms: 0,
         flags: 0,
         status: 'active',
       );
 
-      // TODO: Save to database/backend
-      // For now, just show success message
-      await Future.delayed(const Duration(seconds: 1)); // Simulate API call
+      // Simulate API call with timeout
+      await Future.delayed(const Duration(seconds: 1)).timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          throw TimeoutException('Submission timed out. Please check your connection and try again.');
+        },
+      );
       
-      _showSuccessSnackBar('Flood report submitted successfully!');
+      // Update last submission time
+      _lastSubmissionTime = DateTime.now();
       
-      // Navigate back or to map
+      _showSuccessSnackBar('Flood report submitted successfully! Report ID: ${id.substring(id.length - 6)}');
+      
+      // Navigate back to map
       if (mounted) {
         Navigator.of(context).pop(floodReport);
       }
       
+    } on TimeoutException catch (e) {
+      _showErrorSnackBar(e.message ?? 'Submission timed out. Please try again.');
     } catch (e) {
-      _showErrorSnackBar('Error submitting report: $e');
+      debugPrint('❌ Error submitting flood report: $e');
+      _showErrorSnackBar('Failed to submit report: ${_getUserFriendlyErrorMessage(e)}');
     } finally {
       setState(() {
         _isLoading = false;
@@ -463,7 +601,7 @@ class _FloodReportFormState extends State<FloodReportForm> {
               child: OutlinedButton.icon(
                 onPressed: _isLocationLoading ? null : _getCurrentLocation,
                 icon: const Icon(Icons.refresh),
-                label: Text(useMockLocation ? 'Refresh Mock Location' : 'Refresh GPS Location'),
+                label: const Text(useMockLocation ? 'Refresh Mock Location' : 'Refresh GPS Location'),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: const Color(0xFF1976D2),
                 ),
