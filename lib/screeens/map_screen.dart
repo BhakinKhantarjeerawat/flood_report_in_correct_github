@@ -1,4 +1,5 @@
 import 'package:flood_marker/fake_data/flood_data.dart';
+import 'package:flood_marker/widgets/legend_overlay_widget.dart';
 import 'package:flood_marker/providers/map_controller_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -336,6 +337,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   }
 
   void _addNewFloodReport(Flood newFlood) {
+    debugPrint('🗺️ _addNewFloodReport called with: ${newFlood.id} at ${newFlood.lat}, ${newFlood.lng}');
+    debugPrint('🗺️ Current markers count: ${_markers.length}');
+    
     // Create a new marker for the flood report
     final newMarker = Marker(
       point: LatLng(newFlood.lat, newFlood.lng),
@@ -347,16 +351,20 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       ),
     );
     
+    debugPrint('🗺️ Created new marker: ${newMarker.point}');
+    
     // Add the new marker to the markers list
     setState(() {
       _markers.add(newMarker);
+      debugPrint('🗺️ Added marker to list. New count: ${_markers.length}');
     });
     
     // Move map to show the new marker
     final newLocation = LatLng(newFlood.lat, newFlood.lng);
     ref.read(mapControllerProvider.notifier).moveToLocation(newLocation, zoom: 14.0);
     
-    debugPrint('🗺️ Added new flood report marker at: ${newFlood.lat}, ${newFlood.lng}');
+    debugPrint('🗺️ Moved map to new location: $newLocation');
+    debugPrint('🗺️ Final markers count: ${_markers.length}');
   }
 
   void _goToCurrentLocation() {
@@ -370,6 +378,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 
   @override
   Widget build(BuildContext context) {
+    debugPrint('🗺️ MapScreen: Building with loading: $_isLoading, location: $_currentLocation');
+    debugPrint('🗺️ MapScreen: Current markers count: ${_markers.length}');
+    
     if (_isLoading) {
       return const Scaffold(
         body: Center(
@@ -388,8 +399,11 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           );
           if (result != null && result is Flood) {
             // ✅ Add the new flood report to the map
+            debugPrint('🗺️ Form returned Flood object: ${result.id} at ${result.lat}, ${result.lng}');
             _addNewFloodReport(result);
             _showSuccessSnackBar('New flood report added to map!');
+          } else {
+            debugPrint('🗺️ Form returned: $result (type: ${result.runtimeType})');
           }
         },
         backgroundColor: const Color(0xFF1976D2),
@@ -425,6 +439,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                                  options: MarkerClusterLayerOptions(
                                    markers: _markers,
                                    builder: (context, markers) {
+                                     debugPrint('🗺️ Rendering cluster with ${markers.length} markers');
                                      return Container(
                                        decoration: BoxDecoration(
                                          color: Colors.blue,
@@ -455,7 +470,10 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                                  ),
                                ),
                                
-
+                               // 🧪 TEMPORARY: Regular marker layer to debug clustering issues
+                               MarkerLayer(
+                                 markers: _markers,
+                               ),
                              ],
                            ),
           
