@@ -115,17 +115,17 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     IconData iconData;
     
     switch (severity.toLowerCase()) {
-      case 'high':
+      case 'severe':
         markerColor = Colors.red;
         iconData = Icons.warning;
         break;
-      case 'medium':
+      case 'blocked':
         markerColor = Colors.orange;
-        iconData = Icons.info;
+        iconData = Icons.block;
         break;
-      case 'low':
-        markerColor = Colors.yellow;
-        iconData = Icons.info_outline;
+      case 'passable':
+        markerColor = Colors.green;
+        iconData = Icons.check_circle;
         break;
       default:
         markerColor = Colors.grey;
@@ -293,7 +293,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       case 'blocked':
         return Colors.orange;
       case 'passable':
-        return Colors.yellow;
+        return Colors.green;
       default:
         return Colors.grey;
     }
@@ -325,6 +325,48 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     }
   }
 
+  void _showSuccessSnackBar(String message) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: Colors.green,
+        ),
+      );
+    }
+  }
+
+  void _addNewFloodReport(Flood newFlood) {
+    debugPrint('🗺️ _addNewFloodReport called with: ${newFlood.id} at ${newFlood.lat}, ${newFlood.lng}');
+    debugPrint('🗺️ Current markers count: ${_markers.length}');
+    
+    // Create a new marker for the flood report
+    final newMarker = Marker(
+      point: LatLng(newFlood.lat, newFlood.lng),
+      width: 40,
+      height: 40,
+      child: GestureDetector(
+        onTap: () => _showMarkerInfo(newFlood),
+        child: _buildMarkerIcon(newFlood.severity),
+      ),
+    );
+    
+    debugPrint('🗺️ Created new marker: ${newMarker.point}');
+    
+    // Add the new marker to the markers list
+    setState(() {
+      _markers.add(newMarker);
+      debugPrint('🗺️ Added marker to list. New count: ${_markers.length}');
+    });
+    
+    // Move map to show the new marker
+    final newLocation = LatLng(newFlood.lat, newFlood.lng);
+    ref.read(mapControllerProvider.notifier).moveToLocation(newLocation, zoom: 14.0);
+    
+    debugPrint('🗺️ Moved map to new location: $newLocation');
+    debugPrint('🗺️ Final markers count: ${_markers.length}');
+  }
+
   void _goToCurrentLocation() {
     if (_currentLocation != null) {
       ref.read(mapControllerProvider.notifier).moveToLocation(_currentLocation!, zoom: 10.0);
@@ -337,6 +379,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   @override
   Widget build(BuildContext context) {
     debugPrint('🗺️ MapScreen: Building with loading: $_isLoading, location: $_currentLocation');
+    debugPrint('🗺️ MapScreen: Current markers count: ${_markers.length}');
     
     if (_isLoading) {
       return const Scaffold(
@@ -355,8 +398,12 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             ),
           );
           if (result != null && result is Flood) {
-            // TODO: Add the new flood report to the map
-            _showErrorSnackBar('New flood report added! (TODO: Update map)');
+            // ✅ Add the new flood report to the map
+            debugPrint('🗺️ Form returned Flood object: ${result.id} at ${result.lat}, ${result.lng}');
+            _addNewFloodReport(result);
+            _showSuccessSnackBar('New flood report added to map!');
+          } else {
+            debugPrint('🗺️ Form returned: $result (type: ${result.runtimeType})');
           }
         },
         backgroundColor: const Color(0xFF1976D2),
@@ -388,41 +435,47 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               ),
               
                              // Marker cluster layer
-               MarkerClusterLayerWidget(
-                 options: MarkerClusterLayerOptions(
-                   markers: _markers,
-                   builder: (context, markers) {
-                     return Container(
-                       decoration: BoxDecoration(
-                         color: Colors.blue,
-                         shape: BoxShape.circle,
-                         border: Border.all(color: Colors.white, width: 2),
-                         boxShadow: [
-                           BoxShadow(
-                             color: Colors.black.withOpacity(0.3),
-                             blurRadius: 6,
-                             offset: const Offset(0, 3),
+                               MarkerClusterLayerWidget(
+                                 options: MarkerClusterLayerOptions(
+                                   markers: _markers,
+                                   builder: (context, markers) {
+                                     debugPrint('🗺️ Rendering cluster with ${markers.length} markers');
+                                     return Container(
+                                       decoration: BoxDecoration(
+                                         color: Colors.blue,
+                                         shape: BoxShape.circle,
+                                         border: Border.all(color: Colors.white, width: 2),
+                                         boxShadow: [
+                                           BoxShadow(
+                                             color: Colors.black.withOpacity(0.3),
+                                             blurRadius: 6,
+                                             offset: const Offset(0, 3),
+                                           ),
+                                         ],
+                                       ),
+                                       child: Center(
+                                         child: Text(
+                                           markers.length.toString(),
+                                           style: const TextStyle(
+                                             color: Colors.white,
+                                             fontWeight: FontWeight.bold,
+                                             fontSize: 16,
+                                           ),
+                                         ),
+                                       ),
+                                     );
+                                   },
+                                   maxClusterRadius: 120,
+                                   size: const Size(40, 40),
+                                 ),
+                               ),
+                               
+                               // 🧪 TEMPORARY: Regular marker layer to debug clustering issues
+                               MarkerLayer(
+                                 markers: _markers,
+                               ),
+                             ],
                            ),
-                         ],
-                       ),
-                       child: Center(
-                         child: Text(
-                           markers.length.toString(),
-                           style: const TextStyle(
-                             color: Colors.white,
-                             fontWeight: FontWeight.bold,
-                             fontSize: 16,
-                           ),
-                         ),
-                       ),
-                     );
-                   },
-                   maxClusterRadius: 120,
-                   size: const Size(40, 40),
-                 ),
-               ),
-            ],
-          ),
           
           // App bar overlay
           Positioned(
@@ -474,7 +527,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           ),
           
           // LegendOverlayWidget
-         const LegendOverlayWidget()
+        //  const LegendOverlayWidget()
         ],
       ),
     );

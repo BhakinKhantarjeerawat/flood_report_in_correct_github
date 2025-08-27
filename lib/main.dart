@@ -1,18 +1,16 @@
 import 'package:flood_marker/screeens/map_screen.dart';
 import 'package:flood_marker/screeens/update_reminder_screen.dart';
-import 'package:flood_marker/providers/map_controller_provider.dart';
-import 'package:flood_marker/providers/mock_map_controller_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 void main() async {
   runApp(
-    ProviderScope(
+  const  ProviderScope(
       overrides: [
         // 🧪 PROVIDER OVERRIDE EXAMPLES:
         
         // 1. ✅ EASY START: Mock Map Controller for Testing & Debugging
-        mapControllerProvider.overrideWith((ref) => MockMapControllerNotifier()),
+        // mapControllerProvider.overrideWith((ref) => MockMapControllerNotifier()),
         
         // 2. Override with Custom Implementation
         // mapControllerProvider.overrideWith((ref) => CustomMapControllerNotifier()),

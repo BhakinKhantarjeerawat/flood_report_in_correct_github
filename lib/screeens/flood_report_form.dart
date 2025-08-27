@@ -6,6 +6,10 @@ import 'package:geocoding/geocoding.dart';
 import 'dart:io';
 import '../models/flood.dart';
 
+// 🎛️ DEVELOPMENT TOGGLE: Easy switch between mock and real GPS
+// Change this to false when you want to test with real GPS
+const bool useMockLocation = true;
+
 
 class FloodReportForm extends StatefulWidget {
   const FloodReportForm({super.key});
@@ -59,43 +63,70 @@ class _FloodReportFormState extends State<FloodReportForm> {
     });
 
     try {
-      location_package.Location location = location_package.Location();
-      
-      // Check permissions
-      bool serviceEnabled = await location.serviceEnabled();
-      if (!serviceEnabled) {
-        serviceEnabled = await location.requestService();
+      if (useMockLocation) {
+        // 🎯 MOCK LOCATION: Using Bangkok location for development
+        const double mockLatitude = 13.7563;  // Bangkok center
+        const double mockLongitude = 100.5018;
+        
+        // Simulate a small delay to show loading state
+        await Future.delayed(const Duration(milliseconds: 800));
+        
+        setState(() {
+          _latitude = mockLatitude;
+          _longitude = mockLongitude;
+          _isLocationLoading = false;
+        });
+
+        // Get location name for the mock coordinates
+        await _getLocationName();
+        
+        // Show success message
+        _showSuccessSnackBar('📍 Mock location set: Bangkok, Thailand');
+        
+      } else {
+        // 📍 REAL GPS: Using actual device location
+        location_package.Location location = location_package.Location();
+        
+        // Check permissions
+        bool serviceEnabled = await location.serviceEnabled();
         if (!serviceEnabled) {
-          _showErrorSnackBar('Location service is disabled');
-          return;
+          serviceEnabled = await location.requestService();
+          if (!serviceEnabled) {
+            _showErrorSnackBar('Location service is disabled');
+            return;
+          }
         }
-      }
 
-      location_package.PermissionStatus permissionGranted = await location.hasPermission();
-      if (permissionGranted == location_package.PermissionStatus.denied) {
-        permissionGranted = await location.requestPermission();
-        if (permissionGranted != location_package.PermissionStatus.granted) {
-          _showErrorSnackBar('Location permission denied');
-          return;
+        location_package.PermissionStatus permissionGranted = await location.hasPermission();
+        if (permissionGranted == location_package.PermissionStatus.denied) {
+          permissionGranted = await location.requestPermission();
+          if (permissionGranted != location_package.PermissionStatus.granted) {
+            _showErrorSnackBar('Location permission denied');
+            return;
+          }
         }
+
+        // Get current location
+        location_package.LocationData currentLocation = await location.getLocation();
+        setState(() {
+          _latitude = currentLocation.latitude;
+          _longitude = currentLocation.longitude;
+          _isLocationLoading = false;
+        });
+
+        // Get location name
+        await _getLocationName();
       }
-
-      // Get current location
-      location_package.LocationData currentLocation = await location.getLocation();
-      setState(() {
-        _latitude = currentLocation.latitude;
-        _longitude = currentLocation.longitude;
-        _isLocationLoading = false;
-      });
-
-      // Get location name
-      await _getLocationName();
       
     } catch (e) {
       setState(() {
         _isLocationLoading = false;
       });
-      _showErrorSnackBar('Error getting location: $e');
+      if (useMockLocation) {
+        _showErrorSnackBar('Error setting mock location: $e');
+      } else {
+        _showErrorSnackBar('Error getting location: $e');
+      }
     }
   }
 
@@ -374,6 +405,41 @@ class _FloodReportFormState extends State<FloodReportForm> {
                   _isLocationLoading ? 'Getting location...' : 'Current Location',
                   style: const TextStyle(fontWeight: FontWeight.w600),
                 ),
+                const Spacer(),
+                // 🎛️ Development mode indicator
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: useMockLocation 
+                        ? Colors.orange.withOpacity(0.1)
+                        : Colors.green.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: useMockLocation 
+                          ? Colors.orange.withOpacity(0.3)
+                          : Colors.green.withOpacity(0.3),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        useMockLocation ? Icons.smart_toy : Icons.gps_fixed,
+                        size: 16,
+                        color: useMockLocation ? Colors.orange[700] : Colors.green[700],
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        useMockLocation ? 'MOCK' : 'GPS',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: useMockLocation ? Colors.orange[700] : Colors.green[700],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 12),
@@ -397,7 +463,7 @@ class _FloodReportFormState extends State<FloodReportForm> {
               child: OutlinedButton.icon(
                 onPressed: _isLocationLoading ? null : _getCurrentLocation,
                 icon: const Icon(Icons.refresh),
-                label: const Text('Refresh Location'),
+                label: Text(useMockLocation ? 'Refresh Mock Location' : 'Refresh GPS Location'),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: const Color(0xFF1976D2),
                 ),
