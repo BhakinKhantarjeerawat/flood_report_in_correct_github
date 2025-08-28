@@ -8,6 +8,8 @@ class EnhancedMarkerPopup extends StatefulWidget {
   final VoidCallback onConfirm;
   final VoidCallback onFlag;
   final VoidCallback onMarkResolved;
+  final bool userHasConfirmed;
+  final bool userHasFlagged;
 
   const EnhancedMarkerPopup({
     super.key,
@@ -16,6 +18,8 @@ class EnhancedMarkerPopup extends StatefulWidget {
     required this.onConfirm,
     required this.onFlag,
     required this.onMarkResolved,
+    required this.userHasConfirmed,
+    required this.userHasFlagged,
   });
 
   @override
@@ -57,6 +61,11 @@ class _EnhancedMarkerPopupState extends State<EnhancedMarkerPopup>
   }
 
   Color _getSeverityColor() {
+    // If resolved, use grey color
+    if (widget.flood.status == 'resolved') {
+      return Colors.grey;
+    }
+    
     switch (widget.flood.severity.toLowerCase()) {
       case 'severe':
         return Colors.red;
@@ -111,17 +120,49 @@ class _EnhancedMarkerPopupState extends State<EnhancedMarkerPopup>
   }
 
   String _getExpirationTime() {
-    final now = DateTime.now();
-    final difference = widget.flood.expiresAt.difference(now);
-    
-    if (difference.isNegative) {
+    if (widget.flood.status == 'expired') {
       return 'Expired';
-    } else if (difference.inMinutes < 60) {
-      return 'Expires in ${difference.inMinutes}m';
-    } else if (difference.inHours < 24) {
-      return 'Expires in ${difference.inHours}h';
+    } else if (widget.flood.status == 'resolved') {
+      return 'Resolved';
+    } else if (widget.flood.status == 'stale') {
+      return 'Stale (older than 24h)';
     } else {
-      return 'Expires in ${difference.inDays}d';
+      final now = DateTime.now();
+      final difference = widget.flood.expiresAt.difference(now);
+      
+      if (difference.inMinutes < 60) {
+        return 'Expires in ${difference.inMinutes}m';
+      } else if (difference.inHours < 24) {
+        return 'Expires in ${difference.inHours}h';
+      } else {
+        return 'Expires in ${difference.inDays}d';
+      }
+    }
+  }
+
+  Color _getExpirationContainerColor() {
+    switch (widget.flood.status) {
+      case 'expired':
+        return Colors.grey;
+      case 'resolved':
+        return Colors.green;
+      case 'stale':
+        return Colors.orange;
+      default:
+        return Colors.orange; // Active reports
+    }
+  }
+
+  IconData _getExpirationIcon() {
+    switch (widget.flood.status) {
+      case 'expired':
+        return Icons.schedule;
+      case 'resolved':
+        return Icons.check_circle;
+      case 'stale':
+        return Icons.warning;
+      default:
+        return Icons.schedule; // Active reports
     }
   }
 
@@ -311,17 +352,17 @@ class _EnhancedMarkerPopupState extends State<EnhancedMarkerPopup>
                           Container(
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              color: Colors.orange.withOpacity(0.1),
+                              color: _getExpirationContainerColor().withOpacity(0.1),
                               borderRadius: BorderRadius.circular(8),
                               border: Border.all(
-                                color: Colors.orange.withOpacity(0.3),
+                                color: _getExpirationContainerColor().withOpacity(0.3),
                               ),
                             ),
                             child: Row(
                               children: [
                                 Icon(
-                                  Icons.schedule,
-                                  color: Colors.orange[600],
+                                  _getExpirationIcon(),
+                                  color: _getExpirationContainerColor(),
                                   size: 20,
                                 ),
                                 const SizedBox(width: 8),
@@ -330,7 +371,7 @@ class _EnhancedMarkerPopupState extends State<EnhancedMarkerPopup>
                                     _getExpirationTime(),
                                     style: TextStyle(
                                       fontSize: 14,
-                                      color: Colors.orange[700],
+                                      color: _getExpirationContainerColor(),
                                       fontWeight: FontWeight.w500,
                                     ),
                                   ),
@@ -354,11 +395,14 @@ class _EnhancedMarkerPopupState extends State<EnhancedMarkerPopup>
                           // Confirm Button
                           Expanded(
                             child: ElevatedButton.icon(
-                              onPressed: widget.onConfirm,
-                              icon: const Icon(Icons.thumb_up, size: 18),
-                              label: const Text('Confirm'),
+                              onPressed: (widget.flood.status == 'resolved' || widget.userHasConfirmed) ? null : widget.onConfirm,
+                              icon: Icon(
+                                widget.userHasConfirmed ? Icons.check_circle : Icons.thumb_up,
+                                size: 18,
+                              ),
+                              label: Text(widget.userHasConfirmed ? 'Confirmed' : 'Confirm'),
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.green,
+                                backgroundColor: widget.userHasConfirmed ? Colors.grey : Colors.green,
                                 foregroundColor: Colors.white,
                                 padding: const EdgeInsets.symmetric(vertical: 8),
                               ),
@@ -368,11 +412,14 @@ class _EnhancedMarkerPopupState extends State<EnhancedMarkerPopup>
                           // Flag Button
                           Expanded(
                             child: OutlinedButton.icon(
-                              onPressed: widget.onFlag,
-                              icon: const Icon(Icons.flag, size: 18),
-                              label: const Text('Flag'),
+                              onPressed: (widget.flood.status == 'resolved' || widget.userHasFlagged) ? null : widget.onFlag,
+                              icon: Icon(
+                                widget.userHasFlagged ? Icons.flag : Icons.flag_outlined,
+                                size: 18,
+                              ),
+                              label: Text(widget.userHasFlagged ? 'Flagged' : 'Flag'),
                               style: OutlinedButton.styleFrom(
-                                foregroundColor: Colors.red,
+                                foregroundColor: widget.userHasFlagged ? Colors.grey : Colors.red,
                                 padding: const EdgeInsets.symmetric(vertical: 8),
                               ),
                             ),
@@ -412,11 +459,11 @@ class _EnhancedMarkerPopupState extends State<EnhancedMarkerPopup>
                           const SizedBox(width: 8),
                           Expanded(
                             child: OutlinedButton.icon(
-                              onPressed: widget.onMarkResolved,
+                              onPressed: widget.flood.status == 'resolved' ? null : widget.onMarkResolved,
                               icon: const Icon(Icons.check_circle, size: 18),
-                              label: const Text('Resolved'),
+                              label: Text(widget.flood.status == 'resolved' ? 'Resolved' : 'Resolve'),
                               style: OutlinedButton.styleFrom(
-                                foregroundColor: Colors.green,
+                                foregroundColor: widget.flood.status == 'resolved' ? Colors.grey : Colors.green,
                                 padding: const EdgeInsets.symmetric(vertical: 8),
                               ),
                             ),

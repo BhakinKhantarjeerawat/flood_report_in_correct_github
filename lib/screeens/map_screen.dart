@@ -1,6 +1,5 @@
 import 'package:flood_marker/fake_data/flood_data.dart';
 import 'package:flood_marker/providers/map_controller_provider.dart';
-import 'package:flood_marker/widgets/total_markers_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map_marker_cluster/flutter_map_marker_cluster.dart';
@@ -9,6 +8,8 @@ import 'package:latlong2/latlong.dart';
 import 'package:location/location.dart';
 import '../models/flood.dart';
 import '../services/storage_service.dart';
+import '../services/user_action_service.dart';
+import '../services/data_lifecycle_service.dart';
 import '../widgets/marker_search_filter.dart';
 import '../widgets/enhanced_marker_popup.dart';
 import 'flood_report_form.dart';
@@ -23,6 +24,8 @@ class MapScreen extends ConsumerStatefulWidget {
 class _MapScreenState extends ConsumerState<MapScreen> {
   final Location _location = Location();
   final StorageService _storageService = StorageService();
+  final UserActionService _userActionService = UserActionService();
+  final DataLifecycleService _dataLifecycleService = DataLifecycleService();
   bool _isLoading = true;
   LatLng? _currentLocation;
   List<Marker> _markers = [];
@@ -114,6 +117,18 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       _allFloodReports = [...floodData, ...savedReports];
       debugPrint('🗺️ Total reports: ${_allFloodReports.length} (${floodData.length} fake + ${savedReports.length} saved)');
       
+      // Process lifecycle statuses (active, resolved, stale, expired)
+      _allFloodReports = await _dataLifecycleService.processLifecycleStatuses(_allFloodReports);
+      debugPrint('🔄 Processed lifecycle statuses for ${_allFloodReports.length} reports');
+      
+      // Clean up expired reports
+      _allFloodReports = await _dataLifecycleService.cleanupExpiredReports(_allFloodReports);
+      debugPrint('🧹 Cleaned up expired reports, remaining: ${_allFloodReports.length}');
+      
+      // Get statistics for debugging
+      Map<String, int> stats = _dataLifecycleService.getReportStatistics(_allFloodReports);
+      debugPrint('📊 Report statistics: $stats');
+      
       // Generate markers from all reports
       _markers = _allFloodReports.map((flood) {
         return Marker(
@@ -122,7 +137,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           height: 40,
           child: GestureDetector(
             onTap: () => _showMarkerInfo(flood),
-            child: _buildMarkerIcon(flood.severity),
+            child: _buildMarkerIcon(flood),
           ),
         );
       }).toList();
@@ -143,7 +158,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           height: 40,
           child: GestureDetector(
             onTap: () => _showMarkerInfo(flood),
-            child: _buildMarkerIcon(flood.severity),
+            child: _buildMarkerIcon(flood),
           ),
         );
       }).toList();
@@ -151,26 +166,39 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     }
   }
 
-  Widget _buildMarkerIcon(String severity) {
+  Widget _buildMarkerIcon(Flood flood) {
     Color markerColor;
     IconData iconData;
     
-    switch (severity.toLowerCase()) {
-      case 'severe':
-        markerColor = Colors.red;
-        iconData = Icons.warning;
-        break;
-      case 'blocked':
-        markerColor = Colors.orange;
-        iconData = Icons.block;
-        break;
-      case 'passable':
-        markerColor = Colors.green;
-        iconData = Icons.check_circle;
-        break;
-      default:
-        markerColor = Colors.grey;
-        iconData = Icons.place;
+    // Check if report is expired or resolved
+    if (flood.status == 'expired') {
+      markerColor = Colors.grey.withOpacity(0.5);
+      iconData = Icons.schedule;
+    } else if (flood.status == 'resolved') {
+      markerColor = Colors.grey;
+      iconData = Icons.check_circle;
+    } else if (flood.status == 'stale') {
+      markerColor = Colors.orange.withOpacity(0.7);
+      iconData = Icons.warning;
+    } else {
+      // Active report - use severity-based colors
+      switch (flood.severity.toLowerCase()) {
+        case 'severe':
+          markerColor = Colors.red;
+          iconData = Icons.warning;
+          break;
+        case 'blocked':
+          markerColor = Colors.orange;
+          iconData = Icons.block;
+          break;
+        case 'passable':
+          markerColor = Colors.green;
+          iconData = Icons.check_circle;
+          break;
+        default:
+          markerColor = Colors.grey;
+          iconData = Icons.place;
+      }
     }
 
     return Container(
@@ -194,13 +222,17 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     );
   }
 
-  void _showMarkerInfo(Flood flood) {
+  void _showMarkerInfo(Flood flood) async {
     // Close any existing popup
     _closePopup();
     
     setState(() {
       _selectedFlood = flood;
     });
+    
+    // Check user action status
+    bool userHasConfirmed = await _userActionService.hasConfirmedReport(flood.id);
+    bool userHasFlagged = await _userActionService.hasFlaggedReport(flood.id);
     
     // Create overlay entry for the popup
     _popupOverlay = OverlayEntry(
@@ -213,6 +245,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           onConfirm: () => _confirmFloodReport(flood),
           onFlag: () => _flagFloodReport(flood),
           onMarkResolved: () => _markFloodResolved(flood),
+          userHasConfirmed: userHasConfirmed,
+          userHasFlagged: userHasFlagged,
         ),
       ),
     );
@@ -231,28 +265,230 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     });
   }
 
-  void _confirmFloodReport(Flood flood) {
-    // TODO: Implement confirmation logic
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Confirmed flood report: ${flood.id}')),
-    );
-    _closePopup();
+  void _confirmFloodReport(Flood flood) async {
+    try {
+      // Check if user has already confirmed this report
+      bool alreadyConfirmed = await _userActionService.hasConfirmedReport(flood.id);
+      if (alreadyConfirmed) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('You have already confirmed this report'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        return;
+      }
+      
+      // Mark as confirmed by user
+      bool userActionSaved = await _userActionService.markReportAsConfirmed(flood.id);
+      if (!userActionSaved) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to save user action'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+      
+      // Create updated flood report with incremented confirms
+      Flood updatedFlood = flood.copyWith(
+        confirms: flood.confirms + 1,
+      );
+      
+      // Update in local storage
+      bool saved = await _storageService.saveFloodReport(updatedFlood);
+      if (saved) {
+        // Update in local lists
+        _updateFloodReportInLists(updatedFlood);
+        
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Confirmed flood report: ${flood.id}'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        
+        // Refresh the popup to show new count
+        _refreshPopup(updatedFlood);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to save confirmation'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('❌ Error confirming flood report: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
-  void _flagFloodReport(Flood flood) {
-    // TODO: Implement flag logic
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Flagged flood report: ${flood.id}')),
-    );
-    _closePopup();
+  void _flagFloodReport(Flood flood) async {
+    try {
+      // Check if user has already flagged this report
+      bool alreadyFlagged = await _userActionService.hasFlaggedReport(flood.id);
+      if (alreadyFlagged) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('You have already flagged this report'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        return;
+      }
+      
+      // Mark as flagged by user
+      bool userActionSaved = await _userActionService.markReportAsFlagged(flood.id);
+      if (!userActionSaved) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to save user action'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+      
+      // Create updated flood report with incremented flags
+      Flood updatedFlood = flood.copyWith(
+        flags: flood.flags + 1,
+      );
+      
+      // Update in local storage
+      bool saved = await _storageService.saveFloodReport(updatedFlood);
+      if (saved) {
+        // Update in local lists
+        _updateFloodReportInLists(updatedFlood);
+        
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Flagged flood report: ${flood.id}'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        
+        // Refresh the popup to show new count
+        _refreshPopup(updatedFlood);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to save flag'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('❌ Error flagging flood report: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
-  void _markFloodResolved(Flood flood) {
-    // TODO: Implement resolve logic
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Marked flood report as resolved: ${flood.id}')),
-    );
+  void _markFloodResolved(Flood flood) async {
+    try {
+      // Create updated flood report with resolved status
+      Flood updatedFlood = flood.copyWith(
+        status: 'resolved',
+      );
+      
+      // Update in local storage
+      bool saved = await _storageService.saveFloodReport(updatedFlood);
+      if (saved) {
+        // Update in local lists
+        _updateFloodReportInLists(updatedFlood);
+        
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Marked flood report as resolved: ${flood.id}'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        
+        // Close popup and refresh map
+        _closePopup();
+        await _generateMarkers(); // Refresh to show updated status
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to mark as resolved'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('❌ Error marking flood report as resolved: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  void _updateFloodReportInLists(Flood updatedFlood) {
+    // Update in _allFloodReports
+    int index = _allFloodReports.indexWhere((f) => f.id == updatedFlood.id);
+    if (index != -1) {
+      _allFloodReports[index] = updatedFlood;
+    }
+    
+    // Update in fake data if it exists there
+    int fakeIndex = floodData.indexWhere((f) => f.id == updatedFlood.id);
+    if (fakeIndex != -1) {
+      floodData[fakeIndex] = updatedFlood;
+    }
+    
+    // Regenerate markers to reflect changes
+    _generateMarkers();
+  }
+
+  void _refreshPopup(Flood updatedFlood) async {
+    // Close current popup
     _closePopup();
+    
+    // Show new popup with updated data
+    setState(() {
+      _selectedFlood = updatedFlood;
+    });
+    
+    // Check user action status for updated flood
+    bool userHasConfirmed = await _userActionService.hasConfirmedReport(updatedFlood.id);
+    bool userHasFlagged = await _userActionService.hasFlaggedReport(updatedFlood.id);
+    
+    // Create new overlay entry
+    _popupOverlay = OverlayEntry(
+      builder: (context) => Positioned(
+        left: MediaQuery.of(context).size.width / 2 - 160,
+        top: MediaQuery.of(context).size.height / 2 - 200,
+        child: EnhancedMarkerPopup(
+          flood: updatedFlood,
+          onClose: _closePopup,
+          onConfirm: () => _confirmFloodReport(updatedFlood),
+          onFlag: () => _flagFloodReport(updatedFlood),
+          onMarkResolved: () => _markFloodResolved(updatedFlood),
+          userHasConfirmed: userHasConfirmed,
+          userHasFlagged: userHasFlagged,
+        ),
+      ),
+    );
+    
+    // Insert the overlay
+    Overlay.of(context).insert(_popupOverlay!);
   }
 
   String _getLocationName(double lat, double lng) {
@@ -346,7 +582,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       height: 40,
       child: GestureDetector(
         onTap: () => _showMarkerInfo(newFlood),
-        child: _buildMarkerIcon(newFlood.severity),
+        child: _buildMarkerIcon(newFlood),
       ),
     );
     
@@ -377,7 +613,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           height: 40,
           child: GestureDetector(
             onTap: () => _showMarkerInfo(flood),
-            child: _buildMarkerIcon(flood.severity),
+            child: _buildMarkerIcon(flood),
           ),
         );
       }).toList();

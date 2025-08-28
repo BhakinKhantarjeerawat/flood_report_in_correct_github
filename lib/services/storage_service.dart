@@ -18,9 +18,17 @@ class StorageService {
       List<Flood> existingReports = await loadFloodReports();
       debugPrint('💾 StorageService: Loaded ${existingReports.length} existing reports');
       
-      // Add new report
-      existingReports.add(flood);
-      debugPrint('💾 StorageService: Added new report, total now: ${existingReports.length}');
+      // Check if report already exists
+      int existingIndex = existingReports.indexWhere((report) => report.id == flood.id);
+      if (existingIndex != -1) {
+        // Update existing report
+        existingReports[existingIndex] = flood;
+        debugPrint('💾 StorageService: Updated existing report ${flood.id}');
+      } else {
+        // Add new report
+        existingReports.add(flood);
+        debugPrint('💾 StorageService: Added new report, total now: ${existingReports.length}');
+      }
       
       // Convert to JSON and save
       List<String> jsonList = existingReports.map((report) => jsonEncode(report.toMap())).toList();
