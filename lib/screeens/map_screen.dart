@@ -10,6 +10,7 @@ import 'package:location/location.dart';
 import '../models/flood.dart';
 import '../services/storage_service.dart';
 import '../widgets/marker_search_filter.dart';
+import '../widgets/enhanced_marker_popup.dart';
 import 'flood_report_form.dart';
 
 class MapScreen extends ConsumerStatefulWidget {
@@ -27,6 +28,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   List<Marker> _markers = [];
   List<Marker> _filteredMarkers = [];
   List<Flood> _allFloodReports = [];
+  OverlayEntry? _popupOverlay;
+  Flood? _selectedFlood;
   
   @override
   void initState() {
@@ -192,106 +195,64 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   }
 
   void _showMarkerInfo(Flood flood) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        height: MediaQuery.of(context).size.height * 0.4,
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Handle bar
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[300],
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-              
-                             // Title
-               Text(
-                 'Flood Alert - ${_getLocationName(flood.lat, flood.lng)}',
-                 style: const TextStyle(
-                   fontSize: 20,
-                   fontWeight: FontWeight.bold,
-                 ),
-               ),
-               const SizedBox(height: 8),
-               
-               // Severity badge
-               Container(
-                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                 decoration: BoxDecoration(
-                   color: _getSeverityColor(flood.severity),
-                   borderRadius: BorderRadius.circular(20),
-                 ),
-                 child: Text(
-                   _getSeverityDisplayName(flood.severity),
-                   style: const TextStyle(
-                     color: Colors.white,
-                     fontWeight: FontWeight.bold,
-                     fontSize: 12,
-                   ),
-                 ),
-               ),
-               const SizedBox(height: 16),
-               
-               // Description
-               Text(
-                 'Description:',
-                 style: TextStyle(
-                   fontSize: 16,
-                   fontWeight: FontWeight.w600,
-                   color: Colors.grey[700],
-                 ),
-               ),
-               const SizedBox(height: 4),
-               Text(
-                 flood.note ?? 'No description provided',
-                 style: TextStyle(
-                   fontSize: 14,
-                   color: Colors.grey[600],
-                 ),
-               ),
-               const SizedBox(height: 16),
-               
-               // Additional info
-               if (flood.depthCm != null) ...[
-                 Text(
-                   'Depth: ${flood.depthCm} cm',
-                   style: TextStyle(
-                     fontSize: 14,
-                     color: Colors.grey[600],
-                   ),
-                 ),
-                 const SizedBox(height: 8),
-               ],
-               
-               // Timestamp
-               Text(
-                 'Reported: ${_formatTimestamp(flood.createdAt)}',
-                 style: TextStyle(
-                   fontSize: 12,
-                   color: Colors.grey[500],
-                 ),
-               ),
-            ],
-          ),
+    // Close any existing popup
+    _closePopup();
+    
+    setState(() {
+      _selectedFlood = flood;
+    });
+    
+    // Create overlay entry for the popup
+    _popupOverlay = OverlayEntry(
+      builder: (context) => Positioned(
+        left: MediaQuery.of(context).size.width / 2 - 160, // Center the popup (320 width / 2)
+        top: MediaQuery.of(context).size.height / 2 - 200, // Position above the marker
+        child: EnhancedMarkerPopup(
+          flood: flood,
+          onClose: _closePopup,
+          onConfirm: () => _confirmFloodReport(flood),
+          onFlag: () => _flagFloodReport(flood),
+          onMarkResolved: () => _markFloodResolved(flood),
         ),
       ),
     );
+    
+    // Insert the overlay
+    Overlay.of(context).insert(_popupOverlay!);
+  }
+
+  void _closePopup() {
+    if (_popupOverlay != null) {
+      _popupOverlay!.remove();
+      _popupOverlay = null;
+    }
+    setState(() {
+      _selectedFlood = null;
+    });
+  }
+
+  void _confirmFloodReport(Flood flood) {
+    // TODO: Implement confirmation logic
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Confirmed flood report: ${flood.id}')),
+    );
+    _closePopup();
+  }
+
+  void _flagFloodReport(Flood flood) {
+    // TODO: Implement flag logic
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Flagged flood report: ${flood.id}')),
+    );
+    _closePopup();
+  }
+
+  void _markFloodResolved(Flood flood) {
+    // TODO: Implement resolve logic
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Marked flood report as resolved: ${flood.id}')),
+    );
+    _closePopup();
   }
 
   String _getLocationName(double lat, double lng) {
@@ -682,11 +643,12 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 
   
 
-  // @override
-  // void dispose() {
-  //   // Map controller is managed by Riverpod, no need to dispose here
-  //   super.dispose();
-  // }
+  @override
+  void dispose() {
+    // Clean up any open popup
+    _closePopup();
+    super.dispose();
+  }
 }
 
 
