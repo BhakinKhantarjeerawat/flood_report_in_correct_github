@@ -6,6 +6,7 @@ import 'package:geocoding/geocoding.dart';
 import 'dart:io';
 import 'dart:async';
 import '../models/flood.dart';
+import '../services/storage_service.dart';
 
 // 🎛️ DEVELOPMENT TOGGLE: Easy switch between mock and real GPS
 // Change this to false when you want to test with real GPS
@@ -40,6 +41,9 @@ class _FloodReportFormState extends State<FloodReportForm> {
   
   // Anti-spam protection
   DateTime? _lastSubmissionTime;
+  
+  // Storage service
+  final StorageService _storageService = StorageService();
   
   // Severity options
   static const List<Map<String, dynamic>> _severityOptions = [
@@ -427,6 +431,17 @@ class _FloodReportFormState extends State<FloodReportForm> {
         status: 'active',
       );
 
+      // Save to local storage
+      debugPrint('💾 Attempting to save flood report: ${floodReport.id}');
+      bool savedLocally = await _storageService.saveFloodReport(floodReport);
+      debugPrint('💾 Save result: $savedLocally');
+      
+      if (!savedLocally) {
+        _showWarningSnackBar('Report created but failed to save locally. Please check storage permissions.');
+      } else {
+        debugPrint('💾 Successfully saved report locally');
+      }
+      
       // Simulate API call with timeout
       await Future.delayed(const Duration(seconds: 1)).timeout(
         const Duration(seconds: 10),
@@ -438,7 +453,11 @@ class _FloodReportFormState extends State<FloodReportForm> {
       // Update last submission time
       _lastSubmissionTime = DateTime.now();
       
-      _showSuccessSnackBar('Flood report submitted successfully! Report ID: ${id.substring(id.length - 6)}');
+      String successMessage = 'Flood report submitted successfully! Report ID: ${id.substring(id.length - 6)}';
+      if (savedLocally) {
+        successMessage += ' (Saved locally)';
+      }
+      _showSuccessSnackBar(successMessage);
       
       // Navigate back to map
       if (mounted) {

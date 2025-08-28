@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:location/location.dart';
 import '../models/flood.dart';
+import '../services/storage_service.dart';
 import 'flood_report_form.dart';
 
 class MapScreen extends ConsumerStatefulWidget {
@@ -18,6 +19,7 @@ class MapScreen extends ConsumerStatefulWidget {
 
 class _MapScreenState extends ConsumerState<MapScreen> {
   final Location _location = Location();
+  final StorageService _storageService = StorageService();
   bool _isLoading = true;
   LatLng? _currentLocation;
   List<Marker> _markers = [];
@@ -29,13 +31,13 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     
     // Add a timeout to prevent infinite loading
     //todo: check the delay time
-    Future.delayed(const Duration(seconds: 1), () {
+    Future.delayed(const Duration(seconds: 1), () async {
       if (mounted && _isLoading) {
         setState(() {
           _isLoading = false;
           _currentLocation = const LatLng(13.7563, 100.5018); // Bangkok center
         });
-        _generateMarkers();
+        await _generateMarkers();
         _showErrorSnackBar('Location timeout - showing Bangkok area');
       }
     });
@@ -51,7 +53,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           _showErrorSnackBar('Location service is disabled');
           // Continue with default location
           _currentLocation = const LatLng(13.7563, 100.5018); // Bangkok center
-          _generateMarkers();
+          await _generateMarkers();
           setState(() {
             _isLoading = false;
           });
@@ -66,7 +68,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           _showErrorSnackBar('Location permission denied');
           // Continue with default location
           _currentLocation = const LatLng(13.7563, 100.5018); // Bangkok center
-          _generateMarkers();
+          await _generateMarkers();
           setState(() {
             _isLoading = false;
           });
@@ -79,7 +81,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       _currentLocation = LatLng(locationData.latitude!, locationData.longitude!);
       
       // Generate markers from flood data
-      _generateMarkers();
+      await _generateMarkers();
       
       setState(() {
         _isLoading = false;
@@ -88,25 +90,55 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       _showErrorSnackBar('Error getting location: $e');
       // Set default location if location fails - Center of Bangkok
       _currentLocation = const LatLng(13.7563, 100.5018); // Bangkok center
-      _generateMarkers();
+      await _generateMarkers();
       setState(() {
         _isLoading = false;
       });
     }
   }
 
-  void _generateMarkers() {
-    _markers = floodData.map((flood) {
-      return Marker(
-        point: LatLng(flood.lat, flood.lng),
-        width: 40,
-        height: 40,
-        child: GestureDetector(
-          onTap: () => _showMarkerInfo(flood),
-          child: _buildMarkerIcon(flood.severity),
-        ),
-      );
-    }).toList();
+  Future<void> _generateMarkers() async {
+    try {
+      // Load saved reports from local storage
+      List<Flood> savedReports = await _storageService.loadFloodReports();
+      debugPrint('🗺️ Loaded ${savedReports.length} saved reports from local storage');
+      
+      // Combine fake data with saved reports
+      List<Flood> allReports = [...floodData, ...savedReports];
+      debugPrint('🗺️ Total reports: ${allReports.length} (${floodData.length} fake + ${savedReports.length} saved)');
+      
+      // Generate markers from all reports
+      _markers = allReports.map((flood) {
+        return Marker(
+          point: LatLng(flood.lat, flood.lng),
+          width: 40,
+          height: 40,
+          child: GestureDetector(
+            onTap: () => _showMarkerInfo(flood),
+            child: _buildMarkerIcon(flood.severity),
+          ),
+        );
+      }).toList();
+      
+      setState(() {
+        // Trigger rebuild to show new markers
+      });
+      
+    } catch (e) {
+      debugPrint('❌ Error loading saved reports: $e');
+      // Fallback to fake data only
+      _markers = floodData.map((flood) {
+        return Marker(
+          point: LatLng(flood.lat, flood.lng),
+          width: 40,
+          height: 40,
+          child: GestureDetector(
+            onTap: () => _showMarkerInfo(flood),
+            child: _buildMarkerIcon(flood.severity),
+          ),
+        );
+      }).toList();
+    }
   }
 
   Widget _buildMarkerIcon(String severity) {
