@@ -8,6 +8,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:location/location.dart';
 import '../models/flood.dart';
 import '../services/storage_service.dart';
+import '../widgets/marker_search_filter.dart';
 import 'flood_report_form.dart';
 
 class MapScreen extends ConsumerStatefulWidget {
@@ -23,6 +24,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   bool _isLoading = true;
   LatLng? _currentLocation;
   List<Marker> _markers = [];
+  List<Marker> _filteredMarkers = [];
+  List<Flood> _allFloodReports = [];
   
   @override
   void initState() {
@@ -104,11 +107,11 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       debugPrint('🗺️ Loaded ${savedReports.length} saved reports from local storage');
       
       // Combine fake data with saved reports
-      List<Flood> allReports = [...floodData, ...savedReports];
-      debugPrint('🗺️ Total reports: ${allReports.length} (${floodData.length} fake + ${savedReports.length} saved)');
+      _allFloodReports = [...floodData, ...savedReports];
+      debugPrint('🗺️ Total reports: ${_allFloodReports.length} (${floodData.length} fake + ${savedReports.length} saved)');
       
       // Generate markers from all reports
-      _markers = allReports.map((flood) {
+      _markers = _allFloodReports.map((flood) {
         return Marker(
           point: LatLng(flood.lat, flood.lng),
           width: 40,
@@ -119,6 +122,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           ),
         );
       }).toList();
+      _filteredMarkers = List.from(_markers); // Initially show all markers
       
       setState(() {
         // Trigger rebuild to show new markers
@@ -127,7 +131,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     } catch (e) {
       debugPrint('❌ Error loading saved reports: $e');
       // Fallback to fake data only
-      _markers = floodData.map((flood) {
+      _allFloodReports = List.from(floodData);
+      _markers = _allFloodReports.map((flood) {
         return Marker(
           point: LatLng(flood.lat, flood.lng),
           width: 40,
@@ -138,6 +143,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           ),
         );
       }).toList();
+      _filteredMarkers = List.from(_markers);
     }
   }
 
@@ -384,10 +390,12 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     
     debugPrint('🗺️ Created new marker: ${newMarker.point}');
     
-    // Add the new marker to the markers list
+    // Add the new marker to all lists
     setState(() {
+      _allFloodReports.add(newFlood);
       _markers.add(newMarker);
-      debugPrint('🗺️ Added marker to list. New count: ${_markers.length}');
+      _filteredMarkers.add(newMarker);
+      debugPrint('🗺️ Added marker to lists. New count: ${_markers.length}');
     });
     
     // Move map to show the new marker
@@ -396,6 +404,30 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     
     debugPrint('🗺️ Moved map to new location: $newLocation');
     debugPrint('🗺️ Final markers count: ${_markers.length}');
+  }
+
+  void _onFilterChanged(List<Flood> filteredReports) {
+    setState(() {
+      _filteredMarkers = filteredReports.map((flood) {
+        return Marker(
+          point: LatLng(flood.lat, flood.lng),
+          width: 40,
+          height: 40,
+          child: GestureDetector(
+            onTap: () => _showMarkerInfo(flood),
+            child: _buildMarkerIcon(flood.severity),
+          ),
+        );
+      }).toList();
+    });
+    debugPrint('🔍 Filter applied: showing ${_filteredMarkers.length} of ${_markers.length} markers');
+  }
+
+  void _onClearFilters() {
+    setState(() {
+      _filteredMarkers = List.from(_markers);
+    });
+    debugPrint('🔍 Filters cleared: showing all ${_markers.length} markers');
   }
 
   void _goToCurrentLocation() {
@@ -503,10 +535,10 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                 maxZoom: 19,
               ),
               
-                             // Marker cluster layer
+                                                            // Marker cluster layer
                                MarkerClusterLayerWidget(
                                  options: MarkerClusterLayerOptions(
-                                   markers: _markers,
+                                   markers: _filteredMarkers,
                                    builder: (context, markers) {
                                      debugPrint('🗺️ Rendering cluster with ${markers.length} markers');
                                      return Container(
@@ -541,10 +573,22 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                                
                                // 🧪 TEMPORARY: Regular marker layer to debug clustering issues
                                MarkerLayer(
-                                 markers: _markers,
+                                 markers: _filteredMarkers,
                                ),
                              ],
                            ),
+          
+          // Search and Filter Widget
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 80, // Below the app bar
+            left: 16,
+            right: 16,
+            child: MarkerSearchFilter(
+              allMarkers: _allFloodReports,
+              onFilterChanged: _onFilterChanged,
+              onClearFilters: _onClearFilters,
+            ),
+          ),
           
           // App bar overlay
           Positioned(
@@ -586,21 +630,21 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: Colors.blue,
+                      color: _filteredMarkers.length < _markers.length ? Colors.orange : Colors.blue,
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(color: Colors.white, width: 2),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(
-                          Icons.location_on,
+                        Icon(
+                          _filteredMarkers.length < _markers.length ? Icons.filter_list : Icons.location_on,
                           color: Colors.white,
                           size: 16,
                         ),
                         const SizedBox(width: 6),
                         Text(
-                          '${_markers.length}',
+                          '${_filteredMarkers.length}/${_markers.length}',
                           style: const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
@@ -674,11 +718,11 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                         ),
                       ),
                       Text(
-                        '${_markers.length}',
-                        style: const TextStyle(
+                        '${_filteredMarkers.length}/${_markers.length}',
+                        style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
-                          color: Colors.blue,
+                          color: _filteredMarkers.length < _markers.length ? Colors.orange : Colors.blue,
                         ),
                       ),
                     ],
