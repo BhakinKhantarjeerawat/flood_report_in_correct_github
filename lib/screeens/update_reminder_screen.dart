@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class UpdateReminderScreen extends StatefulWidget {
   const UpdateReminderScreen({super.key});
@@ -174,21 +175,21 @@ class _UpdateReminderScreenState extends State<UpdateReminderScreen> {
                         const SizedBox(height: 24),
                         
                         // Update Benefits
-                        const Column(
+                    const   Column(
                           children: [
-                            UpdateBenefit(
-                              icon: Icons.security,
-                              title: 'Security Updates',
-                              description: 'Latest security patches and improvements',
-                            ),
-                            SizedBox(height: 16),
+                            // UpdateBenefit(
+                            //   icon: Icons.security,
+                            //   title: 'Security Updates',
+                            //   description: 'Latest security patches and improvements',
+                            // ),
+                            // SizedBox(height: 16),
                             UpdateBenefit(
                               icon: Icons.bug_report,
                               title: 'Bug Fixes',
                               description: 'Resolved issues and better performance',
                             ),
                             SizedBox(height: 16),
-                            UpdateBenefit(
+                           UpdateBenefit(
                               icon: Icons.new_releases,
                               title: 'New Features',
                               description: 'Enhanced flood monitoring capabilities',
@@ -240,9 +241,21 @@ class _UpdateReminderScreenState extends State<UpdateReminderScreen> {
                         SizedBox(
                           width: double.infinity,
                           child: OutlinedButton(
-                            onPressed: () {
-                              // Navigate to main app
-                              Navigator.of(context).pushReplacementNamed('/map');
+                            onPressed: () async {
+                              // Sign in anonymously if no session exists
+                              try {
+                                final supabase = Supabase.instance.client;
+                                if (supabase.auth.currentSession == null) {
+                                  final response = await supabase.auth.signInAnonymously();
+                                  print('Anonymous user ID: ${response.user?.id}');
+                                }
+                                // Navigate to main app
+                                Navigator.of(context).pushReplacementNamed('/map');
+                              } catch (e) {
+                                print('Error signing in anonymously: $e');
+                                // Still navigate to main app even if sign-in fails
+                                Navigator.of(context).pushReplacementNamed('/map');
+                              }
                             },
                             style: OutlinedButton.styleFrom(
                               foregroundColor: const Color(0xFF1976D2),
