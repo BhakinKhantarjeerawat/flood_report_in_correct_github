@@ -7,11 +7,10 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
-  // Load environment variables from .env file
   await dotenv.load(fileName: ".env");
   
   // Initialize Supabase
+  //todo: switch betwee local and production
   // For local development, use the URLs from your supabase/config.toml
   // For production, replace with your actual Supabase project credentials
   await Supabase.initialize(

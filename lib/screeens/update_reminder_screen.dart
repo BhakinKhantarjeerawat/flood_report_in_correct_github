@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers/user_provider.dart';
 
 class UpdateReminderScreen extends StatefulWidget {
   const UpdateReminderScreen({super.key});
@@ -238,41 +239,49 @@ class _UpdateReminderScreenState extends State<UpdateReminderScreen> {
                         const SizedBox(height: 16),
                         
                         // Continue Button
-                        SizedBox(
-                          width: double.infinity,
-                          child: OutlinedButton(
-                            onPressed: () async {
-                              // Sign in anonymously if no session exists
-                              try {
-                                final supabase = Supabase.instance.client;
-                                if (supabase.auth.currentSession == null) {
-                                  final response = await supabase.auth.signInAnonymously();
-                                  print('Anonymous user ID: ${response.user?.id}');
-                                }
-                                // Navigate to main app
-                                Navigator.of(context).pushReplacementNamed('/map');
-                              } catch (e) {
-                                print('Error signing in anonymously: $e');
-                                // Still navigate to main app even if sign-in fails
-                                Navigator.of(context).pushReplacementNamed('/map');
-                              }
-                            },
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: const Color(0xFF1976D2),
-                              side: const BorderSide(color: Color(0xFF1976D2)),
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
+                        Consumer(
+                          builder: (context, ref, child) {
+                            return SizedBox(
+                              width: double.infinity,
+                              child: OutlinedButton(
+                                onPressed: () async {
+                                  try {
+                                    // Use the user provider to sign in anonymously
+                                    final userNotifier = ref.read(userProvider.notifier);
+                                    final user = await userNotifier.signInAnonymously();
+                                    
+                                    if (user != null) {
+                                      print('✅ Anonymous sign-in successful: ${user.id}');
+                                    } else {
+                                      print('⚠️ Anonymous sign-in failed, but continuing...');
+                                    }
+                                    
+                                    // Navigate to main app
+                                    Navigator.of(context).pushReplacementNamed('/map');
+                                  } catch (e) {
+                                    print('❌ Error during sign-in: $e');
+                                    // Still navigate to main app even if sign-in fails
+                                    Navigator.of(context).pushReplacementNamed('/map');
+                                  }
+                                },
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: const Color(0xFF1976D2),
+                                  side: const BorderSide(color: Color(0xFF1976D2)),
+                                  padding: const EdgeInsets.symmetric(vertical: 16),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                                child: const Text(
+                                  'Continue for Now',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
                               ),
-                            ),
-                            child: const Text(
-                              'Continue for Now',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
+                            );
+                          },
                         ),
                       ],
                     ),

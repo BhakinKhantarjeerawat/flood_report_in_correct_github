@@ -1,10 +1,18 @@
 // Sample flood markers data - replace with your actual data
 import 'package:flood_marker/models/flood.dart';
 
+
+//todo:
+/// Helper function to generate fake user IDs for testing
+String generateFakeUserId(int index) {
+  return 'fake-user-${index.toString().padLeft(3, '0')}';
+}
+
 final List<Flood> floodData = [
     // Downtown Bangkok - Siam area
     Flood(
       id: '1',
+      userId: 'fake-user-001',
       lat: 13.7466,
       lng: 100.5347,
       severity: 'severe',
@@ -14,11 +22,13 @@ final List<Flood> floodData = [
       expiresAt: DateTime.now().add(const Duration(hours: 4)),
       confirms: 5,
       flags: 0,
-      status: 'active',
+      status: 'active', 
+    
     ),
     // Sukhumvit area
     Flood(
       id: '2',
+      userId: 'fake-user-002',
       lat: 13.7383,
       lng: 100.5608,
       severity: 'blocked',
@@ -33,6 +43,7 @@ final List<Flood> floodData = [
     // Lumpini Park area
     Flood(
       id: '3',
+      userId: 'fake-user-003',
       lat: 13.7310,
       lng: 100.5440,
       severity: 'passable',
@@ -47,6 +58,7 @@ final List<Flood> floodData = [
     // Silom area
     Flood(
       id: '4',
+      userId: 'fake-user-004',
       lat: 13.7246,
       lng: 100.5270,
       severity: 'severe',
@@ -61,6 +73,7 @@ final List<Flood> floodData = [
     // Chinatown area
     Flood(
       id: '5',
+      userId: 'fake-user-005',
       lat: 13.7414,
       lng: 100.5084,
       severity: 'blocked',
@@ -75,6 +88,7 @@ final List<Flood> floodData = [
     // Victory Monument area
     Flood(
       id: '6',
+      userId: 'fake-user-006',
       lat: 13.7587,
       lng: 100.5374,
       severity: 'passable',
@@ -89,6 +103,7 @@ final List<Flood> floodData = [
     // Chatuchak area
     Flood(
       id: '7',
+      userId: 'fake-user-007',
       lat: 13.8288,
       lng: 100.5564,
       severity: 'severe',
@@ -103,6 +118,7 @@ final List<Flood> floodData = [
     // Don Mueang area
     Flood(
       id: '8',
+      userId: 'fake-user-008',
       lat: 13.9126,
       lng: 100.6068,
       severity: 'blocked',
@@ -117,6 +133,7 @@ final List<Flood> floodData = [
     // Thonburi area (across Chao Phraya River)
     Flood(
       id: '9',
+      userId: 'fake-user-009',
       lat: 13.7563,
       lng: 100.4848,
       severity: 'passable',
@@ -131,6 +148,7 @@ final List<Flood> floodData = [
     // Suvarnabhumi Airport area
     Flood(
       id: '10',
+      userId: 'fake-user-010',
       lat: 13.6900,
       lng: 100.7501,
       severity: 'severe',

@@ -1,3 +1,4 @@
+import 'package:flood_marker/fake_data/flood_data.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
@@ -418,6 +419,7 @@ class _FloodReportFormState extends State<FloodReportForm> {
       // Create flood report with validation
       Flood floodReport = Flood(
         id: id,
+        userId: generateFakeUserId(11),
         lat: _latitude!,
         lng: _longitude!,
         severity: _selectedSeverity,

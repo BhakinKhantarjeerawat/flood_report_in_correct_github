@@ -2,9 +2,10 @@ import 'package:equatable/equatable.dart';
 
 class Flood extends Equatable {
   @override
-  List<Object?> get props => [id, lat, lng, severity, depthCm, note, photoUrls, createdAt, expiresAt, confirms, flags, status];
+  List<Object?> get props => [id, userId, lat, lng, severity, depthCm, note, photoUrls, createdAt, expiresAt, confirms, flags, status];
 
   final String id;
+  final String userId; // ID of the user who created this report
   final double lat;
   final double lng;
   final String severity; // "passable" | "blocked" | "severe"
@@ -19,6 +20,7 @@ class Flood extends Equatable {
 
  const Flood({
     required this.id,
+    required this.userId,
     required this.lat,
     required this.lng,
     required this.severity,
@@ -34,6 +36,7 @@ class Flood extends Equatable {
 
   Map<String, dynamic> toMap() => {
     'id': id,
+    'userId': userId,
     'lat': lat,
     'lng': lng,
     'severity': severity,
@@ -49,6 +52,7 @@ class Flood extends Equatable {
 
   static Flood fromMap(Map<String, dynamic> m) => Flood(
     id: m['id'],
+    userId: m['userId'] ?? 'unknown',
     lat: (m['lat'] as num).toDouble(),
     lng: (m['lng'] as num).toDouble(),
     severity: m['severity'],
@@ -67,6 +71,7 @@ class Flood extends Equatable {
 
   Flood copyWith({
     String? id,
+    String? userId,
     double? lat,
     double? lng,
     String? severity,
@@ -81,6 +86,7 @@ class Flood extends Equatable {
   }) {
     return Flood(
       id: id ?? this.id,
+      userId: userId ?? this.userId,
       lat: lat ?? this.lat,
       lng: lng ?? this.lng,
       severity: severity ?? this.severity,
