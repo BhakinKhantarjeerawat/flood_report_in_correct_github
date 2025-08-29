@@ -10,7 +10,7 @@ import '../services/storage_service.dart';
 
 // 🎛️ DEVELOPMENT TOGGLE: Easy switch between mock and real GPS
 // Change this to false when you want to test with real GPS
-const bool useMockLocation = true;
+const bool useMockLocation = false;
 
 
 class FloodReportForm extends StatefulWidget {
