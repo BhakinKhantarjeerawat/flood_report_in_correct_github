@@ -12,7 +12,9 @@ import '../services/user_action_service.dart';
 import '../services/data_lifecycle_service.dart';
 import '../widgets/marker_search_filter.dart';
 import '../widgets/enhanced_marker_popup.dart';
+import '../config/app_config.dart';
 import 'flood_report_form.dart';
+import 'user_reports_screen.dart';
 
 class MapScreen extends ConsumerStatefulWidget {
   const MapScreen({super.key});
@@ -33,12 +35,12 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   List<Flood> _allFloodReports = [];
   OverlayEntry? _popupOverlay;
   Flood? _selectedFlood;
-  
+
   @override
   void initState() {
     super.initState();
     _initializeMap();
-    
+
     // Add a timeout to prevent infinite loading
     //todo: check the delay time
     Future.delayed(const Duration(seconds: 1), () async {
@@ -88,11 +90,12 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 
       // Get current location
       LocationData locationData = await _location.getLocation();
-      _currentLocation = LatLng(locationData.latitude!, locationData.longitude!);
-      
+      _currentLocation =
+          LatLng(locationData.latitude!, locationData.longitude!);
+
       // Generate markers from flood data
       await _generateMarkers();
-      
+
       setState(() {
         _isLoading = false;
       });
@@ -111,24 +114,43 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     try {
       // Load saved reports from local storage
       List<Flood> savedReports = await _storageService.loadFloodReports();
-      debugPrint('🗺️ Loaded ${savedReports.length} saved reports from local storage');
-      
-      // Combine fake data with saved reports
-      _allFloodReports = [...floodData, ...savedReports];
-      debugPrint('🗺️ Total reports: ${_allFloodReports.length} (${floodData.length} fake + ${savedReports.length} saved)');
-      
+      debugPrint(
+          '🗺️ Loaded ${savedReports.length} saved reports from local storage');
+
+      // // Combine fake data with saved reports
+      // _allFloodReports = [...floodData, ...savedReports];
+      // debugPrint('🗺️ Total reports: ${_allFloodReports.length} (${floodData.length} fake + ${savedReports.length} saved)');
+
+      // With this conditional logic:
+      if (AppConfig.useFakeData) {
+        // Development mode: Use fake data + saved reports
+        _allFloodReports = [...floodData, ...savedReports];
+        AppConfig.infoLog(
+            '��️ Development mode: Total reports: ${_allFloodReports.length} (${floodData.length} fake + ${savedReports.length} saved)');
+      } else {
+        // Production mode: Use only real data (saved reports)
+        _allFloodReports = List.from(savedReports);
+        AppConfig.infoLog(
+            '🗺️ Production mode: Total reports: ${_allFloodReports.length} (real data only)');
+      }
+
       // Process lifecycle statuses (active, resolved, stale, expired)
-      _allFloodReports = await _dataLifecycleService.processLifecycleStatuses(_allFloodReports);
-      debugPrint('🔄 Processed lifecycle statuses for ${_allFloodReports.length} reports');
-      
+      _allFloodReports = await _dataLifecycleService
+          .processLifecycleStatuses(_allFloodReports);
+      debugPrint(
+          '🔄 Processed lifecycle statuses for ${_allFloodReports.length} reports');
+
       // Clean up expired reports
-      _allFloodReports = await _dataLifecycleService.cleanupExpiredReports(_allFloodReports);
-      debugPrint('🧹 Cleaned up expired reports, remaining: ${_allFloodReports.length}');
-      
+      _allFloodReports =
+          await _dataLifecycleService.cleanupExpiredReports(_allFloodReports);
+      debugPrint(
+          '🧹 Cleaned up expired reports, remaining: ${_allFloodReports.length}');
+
       // Get statistics for debugging
-      Map<String, int> stats = _dataLifecycleService.getReportStatistics(_allFloodReports);
+      Map<String, int> stats =
+          _dataLifecycleService.getReportStatistics(_allFloodReports);
       debugPrint('📊 Report statistics: $stats');
-      
+
       // Generate markers from all reports
       _markers = _allFloodReports.map((flood) {
         return Marker(
@@ -142,11 +164,10 @@ class _MapScreenState extends ConsumerState<MapScreen> {
         );
       }).toList();
       _filteredMarkers = List.from(_markers); // Initially show all markers
-      
+
       setState(() {
         // Trigger rebuild to show new markers
       });
-      
     } catch (e) {
       debugPrint('❌ Error loading saved reports: $e');
       // Fallback to fake data only
@@ -169,7 +190,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   Widget _buildMarkerIcon(Flood flood) {
     Color markerColor;
     IconData iconData;
-    
+
     // Check if report is expired or resolved
     if (flood.status == 'expired') {
       markerColor = Colors.grey.withOpacity(0.5);
@@ -225,20 +246,23 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   void _showMarkerInfo(Flood flood) async {
     // Close any existing popup
     _closePopup();
-    
+
     setState(() {
       _selectedFlood = flood;
     });
-    
+
     // Check user action status
-    bool userHasConfirmed = await _userActionService.hasConfirmedReport(flood.id);
+    bool userHasConfirmed =
+        await _userActionService.hasConfirmedReport(flood.id);
     bool userHasFlagged = await _userActionService.hasFlaggedReport(flood.id);
-    
+
     // Create overlay entry for the popup
     _popupOverlay = OverlayEntry(
       builder: (context) => Positioned(
-        left: MediaQuery.of(context).size.width / 2 - 160, // Center the popup (320 width / 2)
-        top: MediaQuery.of(context).size.height / 2 - 200, // Position above the marker
+        left: MediaQuery.of(context).size.width / 2 -
+            160, // Center the popup (320 width / 2)
+        top: MediaQuery.of(context).size.height / 2 -
+            200, // Position above the marker
         child: EnhancedMarkerPopup(
           flood: flood,
           onClose: _closePopup,
@@ -250,7 +274,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
         ),
       ),
     );
-    
+
     // Insert the overlay
     Overlay.of(context).insert(_popupOverlay!);
   }
@@ -268,7 +292,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   void _confirmFloodReport(Flood flood) async {
     try {
       // Check if user has already confirmed this report
-      bool alreadyConfirmed = await _userActionService.hasConfirmedReport(flood.id);
+      bool alreadyConfirmed =
+          await _userActionService.hasConfirmedReport(flood.id);
       if (alreadyConfirmed) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -278,9 +303,10 @@ class _MapScreenState extends ConsumerState<MapScreen> {
         );
         return;
       }
-      
+
       // Mark as confirmed by user
-      bool userActionSaved = await _userActionService.markReportAsConfirmed(flood.id);
+      bool userActionSaved =
+          await _userActionService.markReportAsConfirmed(flood.id);
       if (!userActionSaved) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -290,18 +316,18 @@ class _MapScreenState extends ConsumerState<MapScreen> {
         );
         return;
       }
-      
+
       // Create updated flood report with incremented confirms
       Flood updatedFlood = flood.copyWith(
         confirms: flood.confirms + 1,
       );
-      
+
       // Update in local storage
       bool saved = await _storageService.saveFloodReport(updatedFlood);
       if (saved) {
         // Update in local lists
         _updateFloodReportInLists(updatedFlood);
-        
+
         // Show success message
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -309,7 +335,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             backgroundColor: Colors.green,
           ),
         );
-        
+
         // Refresh the popup to show new count
         _refreshPopup(updatedFlood);
       } else {
@@ -344,9 +370,10 @@ class _MapScreenState extends ConsumerState<MapScreen> {
         );
         return;
       }
-      
+
       // Mark as flagged by user
-      bool userActionSaved = await _userActionService.markReportAsFlagged(flood.id);
+      bool userActionSaved =
+          await _userActionService.markReportAsFlagged(flood.id);
       if (!userActionSaved) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -356,18 +383,18 @@ class _MapScreenState extends ConsumerState<MapScreen> {
         );
         return;
       }
-      
+
       // Create updated flood report with incremented flags
       Flood updatedFlood = flood.copyWith(
         flags: flood.flags + 1,
       );
-      
+
       // Update in local storage
       bool saved = await _storageService.saveFloodReport(updatedFlood);
       if (saved) {
         // Update in local lists
         _updateFloodReportInLists(updatedFlood);
-        
+
         // Show success message
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -375,7 +402,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             backgroundColor: Colors.orange,
           ),
         );
-        
+
         // Refresh the popup to show new count
         _refreshPopup(updatedFlood);
       } else {
@@ -403,13 +430,13 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       Flood updatedFlood = flood.copyWith(
         status: 'resolved',
       );
-      
+
       // Update in local storage
       bool saved = await _storageService.saveFloodReport(updatedFlood);
       if (saved) {
         // Update in local lists
         _updateFloodReportInLists(updatedFlood);
-        
+
         // Show success message
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -417,7 +444,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             backgroundColor: Colors.green,
           ),
         );
-        
+
         // Close popup and refresh map
         _closePopup();
         await _generateMarkers(); // Refresh to show updated status
@@ -446,13 +473,13 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     if (index != -1) {
       _allFloodReports[index] = updatedFlood;
     }
-    
+
     // Update in fake data if it exists there
     int fakeIndex = floodData.indexWhere((f) => f.id == updatedFlood.id);
     if (fakeIndex != -1) {
       floodData[fakeIndex] = updatedFlood;
     }
-    
+
     // Regenerate markers to reflect changes
     _generateMarkers();
   }
@@ -460,16 +487,18 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   void _refreshPopup(Flood updatedFlood) async {
     // Close current popup
     _closePopup();
-    
+
     // Show new popup with updated data
     setState(() {
       _selectedFlood = updatedFlood;
     });
-    
+
     // Check user action status for updated flood
-    bool userHasConfirmed = await _userActionService.hasConfirmedReport(updatedFlood.id);
-    bool userHasFlagged = await _userActionService.hasFlaggedReport(updatedFlood.id);
-    
+    bool userHasConfirmed =
+        await _userActionService.hasConfirmedReport(updatedFlood.id);
+    bool userHasFlagged =
+        await _userActionService.hasFlaggedReport(updatedFlood.id);
+
     // Create new overlay entry
     _popupOverlay = OverlayEntry(
       builder: (context) => Positioned(
@@ -486,7 +515,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
         ),
       ),
     );
-    
+
     // Insert the overlay
     Overlay.of(context).insert(_popupOverlay!);
   }
@@ -503,7 +532,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     if (lat == 13.9126 && lng == 100.6068) return 'Don Mueang';
     if (lat == 13.7563 && lng == 100.4848) return 'Thonburi';
     if (lat == 13.6900 && lng == 100.7501) return 'Suvarnabhumi Airport';
-    
+
     // Default for other locations
     return 'Bangkok Area';
   }
@@ -537,7 +566,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   String _formatTimestamp(DateTime timestamp) {
     final now = DateTime.now();
     final difference = now.difference(timestamp);
-    
+
     if (difference.inDays > 0) {
       return '${difference.inDays} day${difference.inDays > 1 ? 's' : ''} ago';
     } else if (difference.inHours > 0) {
@@ -572,9 +601,10 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   }
 
   void _addNewFloodReport(Flood newFlood) {
-    debugPrint('🗺️ _addNewFloodReport called with: ${newFlood.id} at ${newFlood.lat}, ${newFlood.lng}');
+    debugPrint(
+        '🗺️ _addNewFloodReport called with: ${newFlood.id} at ${newFlood.lat}, ${newFlood.lng}');
     debugPrint('🗺️ Current markers count: ${_markers.length}');
-    
+
     // Create a new marker for the flood report
     final newMarker = Marker(
       point: LatLng(newFlood.lat, newFlood.lng),
@@ -585,9 +615,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
         child: _buildMarkerIcon(newFlood),
       ),
     );
-    
+
     debugPrint('🗺️ Created new marker: ${newMarker.point}');
-    
+
     // Add the new marker to all lists
     setState(() {
       _allFloodReports.add(newFlood);
@@ -595,11 +625,13 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       _filteredMarkers.add(newMarker);
       debugPrint('🗺️ Added marker to lists. New count: ${_markers.length}');
     });
-    
+
     // Move map to show the new marker
     final newLocation = LatLng(newFlood.lat, newFlood.lng);
-    ref.read(mapControllerProvider.notifier).moveToLocation(newLocation, zoom: 14.0);
-    
+    ref
+        .read(mapControllerProvider.notifier)
+        .moveToLocation(newLocation, zoom: 14.0);
+
     debugPrint('🗺️ Moved map to new location: $newLocation');
     debugPrint('🗺️ Final markers count: ${_markers.length}');
   }
@@ -618,7 +650,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
         );
       }).toList();
     });
-    debugPrint('🔍 Filter applied: showing ${_filteredMarkers.length} of ${_markers.length} markers');
+    debugPrint(
+        '🔍 Filter applied: showing ${_filteredMarkers.length} of ${_markers.length} markers');
   }
 
   void _onClearFilters() {
@@ -630,18 +663,23 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 
   void _goToCurrentLocation() {
     if (_currentLocation != null) {
-      ref.read(mapControllerProvider.notifier).moveToLocation(_currentLocation!, zoom: 10.0);
+      ref
+          .read(mapControllerProvider.notifier)
+          .moveToLocation(_currentLocation!, zoom: 10.0);
     } else {
       // If no current location, go to Bangkok center
-      ref.read(mapControllerProvider.notifier).moveToLocation(const LatLng(13.7563, 100.5018), zoom: 10.0);
+      ref
+          .read(mapControllerProvider.notifier)
+          .moveToLocation(const LatLng(13.7563, 100.5018), zoom: 10.0);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    debugPrint('🗺️ MapScreen: Building with loading: $_isLoading, location: $_currentLocation');
+    debugPrint(
+        '🗺️ MapScreen: Building with loading: $_isLoading, location: $_currentLocation');
     debugPrint('🗺️ MapScreen: Current markers count: ${_markers.length}');
-    
+
     if (_isLoading) {
       return const Scaffold(
         body: Center(
@@ -659,11 +697,12 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           FloatingActionButton(
             onPressed: () {
               // Zoom in by moving to current location with higher zoom
-              final currentLocation = _currentLocation ?? const LatLng(13.7563, 100.5018);
+              final currentLocation =
+                  _currentLocation ?? const LatLng(13.7563, 100.5018);
               ref.read(mapControllerProvider.notifier).moveToLocation(
-                currentLocation,
-                zoom: 15.0, // Zoom in to street level
-              );
+                    currentLocation,
+                    zoom: 15.0, // Zoom in to street level
+                  );
             },
             backgroundColor: Colors.white,
             foregroundColor: Colors.blue,
@@ -675,11 +714,12 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           FloatingActionButton(
             onPressed: () {
               // Zoom out by moving to current location with lower zoom
-              final currentLocation = _currentLocation ?? const LatLng(13.7563, 100.5018);
+              final currentLocation =
+                  _currentLocation ?? const LatLng(13.7563, 100.5018);
               ref.read(mapControllerProvider.notifier).moveToLocation(
-                currentLocation,
-                zoom: 8.0, // Zoom out to city level
-              );
+                    currentLocation,
+                    zoom: 8.0, // Zoom out to city level
+                  );
             },
             backgroundColor: Colors.white,
             foregroundColor: Colors.blue,
@@ -697,17 +737,34 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               );
               if (result != null && result is Flood) {
                 // ✅ Add the new flood report to the map
-                debugPrint('🗺️ Form returned Flood object: ${result.id} at ${result.lat}, ${result.lng}');
+                debugPrint(
+                    '🗺️ Form returned Flood object: ${result.id} at ${result.lat}, ${result.lng}');
                 _addNewFloodReport(result);
                 _showSuccessSnackBar('New flood report added to map!');
               } else {
-                debugPrint('🗺️ Form returned: $result (type: ${result.runtimeType})');
+                debugPrint(
+                    '🗺️ Form returned: $result (type: ${result.runtimeType})');
               }
             },
             backgroundColor: const Color(0xFF1976D2),
             foregroundColor: Colors.white,
             icon: const Icon(Icons.add_location),
             label: const Text('Report Flood'),
+          ),
+          const SizedBox(height: 16),
+          // My Reports Button
+          FloatingActionButton(
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const UserReportsScreen(),
+                ),
+              );
+            },
+            backgroundColor: Colors.orange,
+            foregroundColor: Colors.white,
+            heroTag: 'myReports',
+            child: const Icon(Icons.history),
           ),
         ],
       ),
@@ -718,7 +775,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           FlutterMap(
             mapController: ref.watch(mapControllerProvider),
             options: MapOptions(
-              initialCenter: _currentLocation ?? const LatLng(13.7563, 100.5018),
+              initialCenter:
+                  _currentLocation ?? const LatLng(13.7563, 100.5018),
               initialZoom: 10.0, // Better zoom level to show Bangkok area
               minZoom: 5.0,
               maxZoom: 18.0,
@@ -733,50 +791,51 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                 userAgentPackageName: 'com.example.flood_marker',
                 maxZoom: 19,
               ),
-              
-                                                            // Marker cluster layer
-                               MarkerClusterLayerWidget(
-                                 options: MarkerClusterLayerOptions(
-                                   markers: _filteredMarkers,
-                                   builder: (context, markers) {
-                                     debugPrint('🗺️ Rendering cluster with ${markers.length} markers');
-                                     return Container(
-                                       decoration: BoxDecoration(
-                                         color: Colors.blue,
-                                         shape: BoxShape.circle,
-                                         border: Border.all(color: Colors.white, width: 2),
-                                         boxShadow: [
-                                           BoxShadow(
-                                             color: Colors.black.withOpacity(0.3),
-                                             blurRadius: 6,
-                                             offset: const Offset(0, 3),
-                                           ),
-                                         ],
-                                       ),
-                                       child: Center(
-                                         child: Text(
-                                           markers.length.toString(),
-                                           style: const TextStyle(
-                                             color: Colors.white,
-                                             fontWeight: FontWeight.bold,
-                                             fontSize: 16,
-                                           ),
-                                         ),
-                                       ),
-                                     );
-                                   },
-                                   maxClusterRadius: 120,
-                                   size: const Size(40, 40),
-                                 ),
-                               ),
-                               
-                               // 🧪 TEMPORARY: Regular marker layer to debug clustering issues
-                               MarkerLayer(
-                                 markers: _filteredMarkers,
-                               ),
-                             ],
-                           ),
-          
+
+              // Marker cluster layer
+              MarkerClusterLayerWidget(
+                options: MarkerClusterLayerOptions(
+                  markers: _filteredMarkers,
+                  builder: (context, markers) {
+                    debugPrint(
+                        '🗺️ Rendering cluster with ${markers.length} markers');
+                    return Container(
+                      decoration: BoxDecoration(
+                        color: Colors.blue,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 2),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.3),
+                            blurRadius: 6,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      child: Center(
+                        child: Text(
+                          markers.length.toString(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                  maxClusterRadius: 120,
+                  size: const Size(40, 40),
+                ),
+              ),
+
+              // 🧪 TEMPORARY: Regular marker layer to debug clustering issues
+              MarkerLayer(
+                markers: _filteredMarkers,
+              ),
+            ],
+          ),
+
           // Search and Filter Widget
           Positioned(
             top: MediaQuery.of(context).padding.top + 80, // Below the app bar
@@ -788,7 +847,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               onClearFilters: _onClearFilters,
             ),
           ),
-          
+
           // App bar overlay
           Positioned(
             top: MediaQuery.of(context).padding.top + 10,
@@ -827,9 +886,12 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   ),
                   // Marker count badge
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: _filteredMarkers.length < _markers.length ? Colors.orange : Colors.blue,
+                      color: _filteredMarkers.length < _markers.length
+                          ? Colors.orange
+                          : Colors.blue,
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(color: Colors.white, width: 2),
                     ),
@@ -837,7 +899,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(
-                          _filteredMarkers.length < _markers.length ? Icons.filter_list : Icons.location_on,
+                          _filteredMarkers.length < _markers.length
+                              ? Icons.filter_list
+                              : Icons.location_on,
                           color: Colors.white,
                           size: 16,
                         ),
@@ -866,18 +930,16 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               ),
             ),
           ),
-          
+
           // LegendOverlayWidget
-        //  const LegendOverlayWidget(),
-          
+          //  const LegendOverlayWidget(),
+
           // Marker count widget (bottom left)
           // TotalMarkersWidget(filteredMarkers: _filteredMarkers, markers: _markers),
         ],
       ),
     );
   }
-
-  
 
   @override
   void dispose() {
@@ -886,10 +948,3 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     super.dispose();
   }
 }
-
-
-
-
-
-
-
