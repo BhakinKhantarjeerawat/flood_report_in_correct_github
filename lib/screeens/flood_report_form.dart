@@ -1,27 +1,29 @@
-import 'package:flood_marker/fake_data/flood_data.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:location/location.dart' as location_package;
 import 'package:geocoding/geocoding.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:uuid/uuid.dart';
 import 'dart:io';
 import 'dart:async';
 import '../models/flood.dart';
-import '../services/storage_service.dart';
+import '../providers/user_provider.dart';
 
 // 🎛️ DEVELOPMENT TOGGLE: Easy switch between mock and real GPS
 // Change this to false when you want to test with real GPS
-const bool useMockLocation = false;
+const bool useMockLocation = true;
 
 
-class FloodReportForm extends StatefulWidget {
+class FloodReportForm extends ConsumerStatefulWidget {
   const FloodReportForm({super.key});
 
   @override
-  State<FloodReportForm> createState() => _FloodReportFormState();
+  ConsumerState<FloodReportForm> createState() => _FloodReportFormState();
 }
 
-class _FloodReportFormState extends State<FloodReportForm> {
+class _FloodReportFormState extends ConsumerState<FloodReportForm> {
   final _formKey = GlobalKey<FormState>();
   final _imagePicker = ImagePicker();
   
@@ -43,8 +45,7 @@ class _FloodReportFormState extends State<FloodReportForm> {
   // Anti-spam protection
   DateTime? _lastSubmissionTime;
   
-  // Storage service
-  final StorageService _storageService = StorageService();
+  // User provider will be accessed via ref
   
   // Severity options
   static const List<Map<String, dynamic>> _severityOptions = [
@@ -413,13 +414,20 @@ class _FloodReportFormState extends State<FloodReportForm> {
         _isLoading = true;
       });
 
-      // Generate unique ID with timestamp
-      String id = DateTime.now().millisecondsSinceEpoch.toString();
+      // Generate unique UUID for database
+      String id = const Uuid().v4();
       
+      // Get current user ID from the user provider
+      final currentUser = ref.read(userProvider);
+      if (currentUser == null) {
+        _showErrorSnackBar('User not authenticated. Please try again.');
+        return;
+      }
+
       // Create flood report with validation
       Flood floodReport = Flood(
         id: id,
-        userId: generateFakeUserId(11),
+        userId: currentUser.id, // Use real user ID from authentication
         lat: _latitude!,
         lng: _longitude!,
         severity: _selectedSeverity,
@@ -433,33 +441,50 @@ class _FloodReportFormState extends State<FloodReportForm> {
         status: 'active',
       );
 
-      // Save to local storage
-      debugPrint('💾 Attempting to save flood report: ${floodReport.id}');
-      bool savedLocally = await _storageService.saveFloodReport(floodReport);
-      debugPrint('💾 Save result: $savedLocally');
+      // Save to Supabase database
+      debugPrint('💾 Attempting to save flood report to Supabase: ${floodReport.id}');
+      debugPrint('💾 User ID: ${currentUser.id}');
       
-      if (!savedLocally) {
-        _showWarningSnackBar('Report created but failed to save locally. Please check storage permissions.');
-      } else {
-        debugPrint('💾 Successfully saved report locally');
+      try {
+        final supabase = Supabase.instance.client;
+        
+        // Convert Flood object to Map for database insertion
+        final floodData = {
+          'id': floodReport.id,
+          'user_id': floodReport.userId,
+          'lat': floodReport.lat,
+          'lng': floodReport.lng,
+          'severity': floodReport.severity,
+          'depth_cm': floodReport.depthCm,
+          'note': floodReport.note,
+          'photo_urls': floodReport.photoUrls,
+          'created_at': floodReport.createdAt.toIso8601String(),
+          'expires_at': floodReport.expiresAt.toIso8601String(),
+          'confirms': floodReport.confirms,
+          'flags': floodReport.flags,
+          'status': floodReport.status,
+          'is_anonymous': true,
+        };
+        
+        // Insert into flood_reports table
+        final response = await supabase
+            .from('flood_reports')
+            .insert(floodData)
+            .select();
+            
+        debugPrint('✅ Successfully saved to Supabase: $response');
+        
+        // Update last submission time
+        _lastSubmissionTime = DateTime.now();
+        
+        String successMessage = 'Flood report submitted successfully! Report ID: ${id.substring(id.length - 6)}';
+        _showSuccessSnackBar(successMessage);
+        
+      } catch (e) {
+        debugPrint('❌ Error saving to Supabase: $e');
+        _showErrorSnackBar('Failed to save report to database: ${_getUserFriendlyErrorMessage(e)}');
+        return;
       }
-      
-      // Simulate API call with timeout
-      await Future.delayed(const Duration(seconds: 1)).timeout(
-        const Duration(seconds: 10),
-        onTimeout: () {
-          throw TimeoutException('Submission timed out. Please check your connection and try again.');
-        },
-      );
-      
-      // Update last submission time
-      _lastSubmissionTime = DateTime.now();
-      
-      String successMessage = 'Flood report submitted successfully! Report ID: ${id.substring(id.length - 6)}';
-      if (savedLocally) {
-        successMessage += ' (Saved locally)';
-      }
-      _showSuccessSnackBar(successMessage);
       
       // Navigate back to map
       if (mounted) {
