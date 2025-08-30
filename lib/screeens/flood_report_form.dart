@@ -299,6 +299,56 @@ class _FloodReportFormState extends ConsumerState<FloodReportForm> {
     }
   }
 
+  /// Enhanced database error handling with specific Supabase error messages
+  String _getDatabaseErrorMessage(dynamic error) {
+    if (error is PostgrestException) {
+      switch (error.code) {
+        case '22P02': // Invalid input syntax
+          return 'Data format error. Please check your input and try again.';
+        case '23502': // Not null violation
+          return 'Required information missing. Please fill all required fields.';
+        case '23503': // Foreign key violation
+          return 'User authentication error. Please sign in again.';
+        case '23505': // Unique violation
+          return 'This report already exists. Please check your submission.';
+        case '23514': // Check violation
+          return 'Invalid data values. Please check your input.';
+        case '42P01': // Undefined table
+          return 'System error: Database table not found. Please contact support.';
+        case '42501': // Insufficient privilege
+          return 'Permission denied. You may not have access to this feature.';
+        case '42703': // Undefined column
+          return 'System error: Database structure issue. Please contact support.';
+        case '22001': // String data right truncation
+          return 'Text too long. Please shorten your description.';
+        case '22003': // Numeric value out of range
+          return 'Value out of range. Please check your input.';
+        case '22008': // Invalid datetime format
+          return 'Date/time format error. Please try again.';
+        case '23000': // Integrity constraint violation
+          return 'Data validation error. Please check your input.';
+        case '25P01': // No active transaction
+          return 'Transaction error. Please try again.';
+        case '40P01': // Deadlock detected
+          return 'System busy. Please try again in a moment.';
+        case '57P01': // Admin shutdown
+          return 'System maintenance. Please try again later.';
+        case '58P01': // System error
+          return 'System error. Please try again later.';
+        default:
+          return 'Database error: ${error.message}. Please try again.';
+      }
+    } else if (error.toString().contains('network') || error.toString().contains('connection')) {
+      return 'Network error. Please check your internet connection and try again.';
+    } else if (error.toString().contains('timeout')) {
+      return 'Request timed out. Please check your connection and try again.';
+    } else if (error.toString().contains('permission') || error.toString().contains('unauthorized')) {
+      return 'Access denied. Please check your account status and try again.';
+    } else {
+      return 'An unexpected error occurred: ${error.toString()}. Please try again.';
+    }
+  }
+
   void _showClearPhotosDialog() {
     showDialog(
       context: context,
@@ -424,6 +474,46 @@ class _FloodReportFormState extends ConsumerState<FloodReportForm> {
         return;
       }
 
+      // Enhanced data validation before database submission
+      if (currentUser.id.isEmpty) {
+        _showErrorSnackBar('User authentication error. Please sign in again.');
+        return;
+      }
+
+      // Validate coordinates are within reasonable bounds
+      if (_latitude! < -90 || _latitude! > 90) {
+        _showErrorSnackBar('Invalid latitude value. Please refresh your location.');
+        return;
+      }
+      if (_longitude! < -180 || _longitude! > 180) {
+        _showErrorSnackBar('Invalid longitude value. Please refresh your location.');
+        return;
+      }
+
+      // Validate severity is one of the allowed values
+      if (!['passable', 'blocked', 'severe'].contains(_selectedSeverity)) {
+        _showErrorSnackBar('Invalid severity level. Please select a valid option.');
+        return;
+      }
+
+      // Validate depth if provided
+      if (depthCm != null && (depthCm < 0 || depthCm > 1000)) {
+        _showErrorSnackBar('Depth must be between 0 and 1000 cm. Please check your input.');
+        return;
+      }
+
+      // Validate note length
+      if (note.isNotEmpty && note.length > 500) {
+        _showErrorSnackBar('Note is too long (${note.length} characters). Maximum 500 characters allowed.');
+        return;
+      }
+
+      // Validate photo URLs
+      if (validImages.isEmpty) {
+        _showErrorSnackBar('At least one photo is required. Please add photos and try again.');
+        return;
+      }
+
       // Create flood report with validation
       Flood floodReport = Flood(
         id: id,
@@ -466,11 +556,10 @@ class _FloodReportFormState extends ConsumerState<FloodReportForm> {
           'is_anonymous': true,
         };
         
-        // Insert into flood_reports table
-        final response = await supabase
-            .from('flood_reports')
-            .insert(floodData)
-            .select();
+        debugPrint('💾 Database payload: $floodData');
+        
+        // Insert into flood_reports table with retry logic
+        final response = await _insertWithRetry(supabase, floodData);
             
         debugPrint('✅ Successfully saved to Supabase: $response');
         
@@ -482,7 +571,18 @@ class _FloodReportFormState extends ConsumerState<FloodReportForm> {
         
       } catch (e) {
         debugPrint('❌ Error saving to Supabase: $e');
-        _showErrorSnackBar('Failed to save report to database: ${_getUserFriendlyErrorMessage(e)}');
+        
+        // Enhanced error handling with specific database error messages
+        String userMessage = _getDatabaseErrorMessage(e);
+        _showErrorSnackBar(userMessage);
+        
+        // Log detailed error for debugging
+        if (e is PostgrestException) {
+          debugPrint('❌ PostgrestException: ${e.message}');
+          debugPrint('❌ Error Code: ${e.code}');
+          debugPrint('❌ Details: ${e.details}');
+        }
+        
         return;
       }
       
@@ -500,6 +600,38 @@ class _FloodReportFormState extends ConsumerState<FloodReportForm> {
       setState(() {
         _isLoading = false;
       });
+    }
+  }
+
+  /// Insert data with retry logic for better reliability
+  Future<dynamic> _insertWithRetry(SupabaseClient supabase, Map<String, dynamic> data, {int maxRetries = 3}) async {
+    int attempts = 0;
+    while (attempts < maxRetries) {
+      try {
+        attempts++;
+        debugPrint('🔄 Database insert attempt $attempts of $maxRetries');
+        
+        final response = await supabase
+            .from('flood_reports')
+            .insert(data)
+            .select();
+            
+        debugPrint('✅ Database insert successful on attempt $attempts');
+        return response;
+        
+      } catch (e) {
+        debugPrint('❌ Database insert attempt $attempts failed: $e');
+        
+        if (attempts >= maxRetries) {
+          debugPrint('❌ All retry attempts failed');
+          rethrow; // Re-throw the error after all retries
+        }
+        
+        // Wait before retrying (exponential backoff)
+        final delay = Duration(milliseconds: 500 * attempts);
+        debugPrint('⏳ Waiting ${delay.inMilliseconds}ms before retry...');
+        await Future.delayed(delay);
+      }
     }
   }
 
