@@ -3,15 +3,24 @@ import 'package:flood_marker/screeens/update_reminder_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'dart:io' show Platform;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // Initialize Supabase
-  // For local development, use the URLs from your supabase/config.toml
-  // For production, replace with your actual Supabase project credentials
+  // Platform-specific Supabase URLs
+  String supabaseUrl;
+  if (Platform.isIOS) {
+    supabaseUrl = 'http://127.0.0.1:54321'; // iOS simulator
+  } else if (Platform.isAndroid) {
+    supabaseUrl = 'http://10.0.2.2:54321'; // Android emulator
+  } else {
+    supabaseUrl = 'http://127.0.0.1:54321'; // Default fallback
+  }
+  
+  // Initialize Supabase with platform-specific URL
   await Supabase.initialize(
-    url: 'http://127.0.0.1:54321', // Local Supabase URL
+    url: supabaseUrl,
     anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0', // Local anon key
   );
   

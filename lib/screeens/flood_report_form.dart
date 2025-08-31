@@ -398,32 +398,34 @@ class _FloodReportFormState extends ConsumerState<FloodReportForm> {
         return;
       }
 
-      // Photo validation with helpful guidance
-      if (_selectedImages.isEmpty) {
-        _showErrorSnackBar('Please add at least one photo to document the flooding situation.');
-        return;
-      }
+      // Photo validation - now optional
+      // if (_selectedImages.isEmpty) {
+      //   _showErrorSnackBar('Please add at least one photo to document the flooding situation.');
+      //   return;
+      // }
 
-      // Validate photo files still exist
+      // Validate photo files still exist (only if photos were selected)
       List<File> validImages = [];
-      for (File image in _selectedImages) {
-        if (await image.exists()) {
-          validImages.add(image);
-        } else {
-          debugPrint('⚠️ Photo file no longer exists: ${image.path}');
+      if (_selectedImages.isNotEmpty) {
+        for (File image in _selectedImages) {
+          if (await image.exists()) {
+            validImages.add(image);
+          } else {
+            debugPrint('⚠️ Photo file no longer exists: ${image.path}');
+          }
         }
-      }
 
-      if (validImages.isEmpty) {
-        _showErrorSnackBar('All selected photos are no longer available. Please select photos again.');
-        return;
-      }
+        if (validImages.isEmpty) {
+          _showErrorSnackBar('All selected photos are no longer available. Please select photos again.');
+          return;
+        }
 
-      if (validImages.length != _selectedImages.length) {
-        _showWarningSnackBar('Some photos are no longer available. Proceeding with ${validImages.length} valid photos.');
-        setState(() {
-          _selectedImages = validImages;
-        });
+        if (validImages.length != _selectedImages.length) {
+          _showWarningSnackBar('Some photos are no longer available. Proceeding with ${validImages.length} valid photos.');
+          setState(() {
+            _selectedImages = validImages;
+          });
+        }
       }
 
       // Enhanced depth validation
@@ -508,11 +510,11 @@ class _FloodReportFormState extends ConsumerState<FloodReportForm> {
         return;
       }
 
-      // Validate photo URLs
-      if (validImages.isEmpty) {
-        _showErrorSnackBar('At least one photo is required. Please add photos and try again.');
-        return;
-      }
+      // Validate photo URLs - now optional
+      // if (validImages.isEmpty) {
+      //   _showErrorSnackBar('At least one photo is required. Please add photos and try again.');
+      //   return;
+      // }
 
       // Create flood report with validation
       Flood floodReport = Flood(
@@ -523,7 +525,7 @@ class _FloodReportFormState extends ConsumerState<FloodReportForm> {
         severity: _selectedSeverity,
         depthCm: depthCm,
         note: note.isEmpty ? null : note,
-        photoUrls: validImages.map((file) => file.path).toList(),
+        photoUrls: validImages.isNotEmpty ? validImages.map((file) => file.path).toList() : [],
         createdAt: DateTime.now(),
         expiresAt: DateTime.now().add(const Duration(hours: 6)),
         confirms: 0,
@@ -547,7 +549,7 @@ class _FloodReportFormState extends ConsumerState<FloodReportForm> {
           'severity': floodReport.severity,
           'depth_cm': floodReport.depthCm,
           'note': floodReport.note,
-          'photo_urls': floodReport.photoUrls,
+          'photo_urls': floodReport.photoUrls.isNotEmpty ? floodReport.photoUrls : [],
           'created_at': floodReport.createdAt.toIso8601String(),
           'expires_at': floodReport.expiresAt.toIso8601String(),
           'confirms': floodReport.confirms,
@@ -941,7 +943,7 @@ class _FloodReportFormState extends ConsumerState<FloodReportForm> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'Photos (${_selectedImages.length}/10)',
+                  'Photos (Optional) (${_selectedImages.length}/10)',
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
@@ -1026,7 +1028,7 @@ class _FloodReportFormState extends ConsumerState<FloodReportForm> {
             
             const SizedBox(height: 8),
             Text(
-              'Add up to 10 photos to document the flooding situation',
+              'Add up to 10 photos to document the flooding situation (optional)',
               style: TextStyle(
                 fontSize: 12,
                 color: Colors.grey[600],
@@ -1043,8 +1045,10 @@ class _FloodReportFormState extends ConsumerState<FloodReportForm> {
     final bool canSubmit = !_isLoading && 
                            !_isLocationLoading && 
                            _latitude != null && 
-                           _longitude != null &&
-                           _selectedImages.isNotEmpty;
+                           _longitude != null 
+                          //  &&
+                          //  _selectedImages.isNotEmpty
+                           ;
     
     return SizedBox(
       width: double.infinity,
