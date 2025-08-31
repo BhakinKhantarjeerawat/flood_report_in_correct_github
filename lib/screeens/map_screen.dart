@@ -1,5 +1,5 @@
-import 'package:flood_marker/fake_data/flood_data.dart';
 import 'package:flood_marker/providers/map_controller_provider.dart';
+import 'package:flood_marker/providers/flood_reports_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map_marker_cluster/flutter_map_marker_cluster.dart';
@@ -14,7 +14,6 @@ import '../widgets/marker_search_filter.dart';
 import '../widgets/enhanced_marker_popup.dart';
 import '../config/app_config.dart';
 import 'flood_report_form.dart';
-import 'user_reports_screen.dart';
 
 class MapScreen extends ConsumerStatefulWidget {
   const MapScreen({super.key});
@@ -110,82 +109,71 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     }
   }
 
-  Future<void> _generateMarkers() async {
-    try {
-      // Load saved reports from local storage
-      List<Flood> savedReports = await _storageService.loadFloodReports();
-      debugPrint(
-          '🗺️ Loaded ${savedReports.length} saved reports from local storage');
-
-      // // Combine fake data with saved reports
-      // _allFloodReports = [...floodData, ...savedReports];
-      // debugPrint('🗺️ Total reports: ${_allFloodReports.length} (${floodData.length} fake + ${savedReports.length} saved)');
-
-      // With this conditional logic:
-      if (AppConfig.useFakeData) {
-        // Development mode: Use fake data + saved reports
-        _allFloodReports = [...floodData, ...savedReports];
-        AppConfig.infoLog(
-            '��️ Development mode: Total reports: ${_allFloodReports.length} (${floodData.length} fake + ${savedReports.length} saved)');
+Future<void> _generateMarkers() async {
+  try {
+    AppConfig.infoLog('🗺️ MapScreen: Generating markers from Supabase data...');
+    
+    // Get flood reports from the Supabase provider
+    final reportsAsync = ref.read(floodReportsProvider);
+    
+    if (reportsAsync.hasValue) {
+      _allFloodReports = reportsAsync.value!;
+      AppConfig.infoLog('��️ MapScreen: Loaded ${_allFloodReports.length} reports from provider');
+    } else {
+      // If provider doesn't have data yet, fetch it
+      await ref.read(floodReportsProvider.notifier).fetchAllReports();
+      final currentReportsAsync = ref.read(floodReportsProvider);
+      if (currentReportsAsync.hasValue) {
+        _allFloodReports = currentReportsAsync.value!;
+        AppConfig.infoLog('🗺️ MapScreen: Fetched ${_allFloodReports.length} reports from Supabase');
       } else {
-        // Production mode: Use only real data (saved reports)
-        _allFloodReports = List.from(savedReports);
-        AppConfig.infoLog(
-            '🗺️ Production mode: Total reports: ${_allFloodReports.length} (real data only)');
+        _allFloodReports = [];
+        AppConfig.infoLog('🗺️ MapScreen: No reports available');
       }
-
-      // Process lifecycle statuses (active, resolved, stale, expired)
-      _allFloodReports = await _dataLifecycleService
-          .processLifecycleStatuses(_allFloodReports);
-      debugPrint(
-          '🔄 Processed lifecycle statuses for ${_allFloodReports.length} reports');
-
-      // Clean up expired reports
-      _allFloodReports =
-          await _dataLifecycleService.cleanupExpiredReports(_allFloodReports);
-      debugPrint(
-          '🧹 Cleaned up expired reports, remaining: ${_allFloodReports.length}');
-
-      // Get statistics for debugging
-      Map<String, int> stats =
-          _dataLifecycleService.getReportStatistics(_allFloodReports);
-      debugPrint('📊 Report statistics: $stats');
-
-      // Generate markers from all reports
-      _markers = _allFloodReports.map((flood) {
-        return Marker(
-          point: LatLng(flood.lat, flood.lng),
-          width: 40,
-          height: 40,
-          child: GestureDetector(
-            onTap: () => _showMarkerInfo(flood),
-            child: _buildMarkerIcon(flood),
-          ),
-        );
-      }).toList();
-      _filteredMarkers = List.from(_markers); // Initially show all markers
-
-      setState(() {
-        // Trigger rebuild to show new markers
-      });
-    } catch (e) {
-      debugPrint('❌ Error loading saved reports: $e');
-      // Fallback to fake data only
-      _allFloodReports = List.from(floodData);
-      _markers = _allFloodReports.map((flood) {
-        return Marker(
-          point: LatLng(flood.lat, flood.lng),
-          width: 40,
-          height: 40,
-          child: GestureDetector(
-            onTap: () => _showMarkerInfo(flood),
-            child: _buildMarkerIcon(flood),
-          ),
-        );
-      }).toList();
-      _filteredMarkers = List.from(_markers);
     }
+
+    // Process lifecycle statuses (active, resolved, stale, expired)
+    _allFloodReports = await _dataLifecycleService
+        .processLifecycleStatuses(_allFloodReports);
+    AppConfig.infoLog(
+        '�� MapScreen: Processed lifecycle statuses for ${_allFloodReports.length} reports');
+
+    // Clean up expired reports
+    _allFloodReports =
+        await _dataLifecycleService.cleanupExpiredReports(_allFloodReports);
+    AppConfig.infoLog(
+        '�� MapScreen: Cleaned up expired reports, remaining: ${_allFloodReports.length}');
+
+    // Get statistics for debugging
+    Map<String, int> stats =
+        _dataLifecycleService.getReportStatistics(_allFloodReports);
+    AppConfig.infoLog('📊 MapScreen: Report statistics: $stats');
+
+    // Generate markers from all reports
+    _markers = _allFloodReports.map((flood) {
+      return Marker(
+        point: LatLng(flood.lat, flood.lng),
+        width: 40,
+        height: 40,
+        child: GestureDetector(
+          onTap: () => _showMarkerInfo(flood),
+          child: _buildMarkerIcon(flood),
+        ),
+      );
+    }).toList();
+    _filteredMarkers = List.from(_markers); // Initially show all markers
+
+    setState(() {
+      // Trigger rebuild to show new markers
+    });
+  } catch (e) {
+    AppConfig.errorLog('❌ MapScreen: Error generating markers: $e');
+    // Fallback to empty list
+    _allFloodReports = [];
+    _markers = [];
+    _filteredMarkers = [];
   }
+}
 
   Widget _buildMarkerIcon(Flood flood) {
     Color markerColor;
@@ -475,10 +463,10 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     }
 
     // Update in fake data if it exists there
-    int fakeIndex = floodData.indexWhere((f) => f.id == updatedFlood.id);
-    if (fakeIndex != -1) {
-      floodData[fakeIndex] = updatedFlood;
-    }
+    // int fakeIndex = floodData.indexWhere((f) => f.id == updatedFlood.id);
+    // if (fakeIndex != -1) {
+    //   floodData[fakeIndex] = updatedFlood;
+    // }
 
     // Regenerate markers to reflect changes
     _generateMarkers();
@@ -753,19 +741,19 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           ),
           const SizedBox(height: 16),
           // My Reports Button
-          FloatingActionButton(
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => const UserReportsScreen(),
-                ),
-              );
-            },
-            backgroundColor: Colors.orange,
-            foregroundColor: Colors.white,
-            heroTag: 'myReports',
-            child: const Icon(Icons.history),
-          ),
+          // FloatingActionButton(
+          //   onPressed: () {
+          //     Navigator.of(context).push(
+          //       MaterialPageRoute(
+          //         builder: (context) => const UserReportsScreen(),
+          //       ),
+          //     );
+          //   },
+          //   backgroundColor: Colors.orange,
+          //   foregroundColor: Colors.white,
+          //   heroTag: 'myReports',
+          //   child: const Icon(Icons.history),
+          // ),
         ],
       ),
       body: Stack(

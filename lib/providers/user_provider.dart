@@ -18,19 +18,19 @@ class UserNotifier extends StateNotifier<AnonymousUser?> {
       if (session != null && session.user != null) {
         final user = AnonymousUser.fromSupabase(session.user!.toJson());
         state = user;
-        AppConfig.infoLog('🔄 UserProvider: Initialized with existing user: ${user.id}');
+        // AppConfig.infoLog('🔄 UserProvider: Initialized with existing user: ${user.id}');
       } else {
-        AppConfig.infoLog('🔄 UserProvider: No existing session found');
+        // AppConfig.infoLog('🔄 UserProvider: No existing session found');
       }
     } catch (e) {
-      AppConfig.errorLog('❌ UserProvider: Error initializing user: $e');
+      // AppConfig.errorLog('❌ UserProvider: Error initializing user: $e');
     }
   }
 
   /// Sign in anonymously
   Future<AnonymousUser?> signInAnonymously() async {
     try {
-      AppConfig.infoLog('🔄 UserProvider: Starting anonymous sign-in...');
+      // AppConfig.infoLog('🔄 UserProvider: Starting anonymous sign-in...');
       
       final supabase = Supabase.instance.client;
       final response = await supabase.auth.signInAnonymously();
@@ -38,14 +38,14 @@ class UserNotifier extends StateNotifier<AnonymousUser?> {
       if (response.user != null) {
         final user = AnonymousUser.fromSupabase(response.user!.toJson());
         state = user;
-        AppConfig.infoLog('✅ UserProvider: Anonymous sign-in successful: ${user.id}');
+        // AppConfig.infoLog('✅ UserProvider: Anonymous sign-in successful: ${user.id}');
         return user;
       } else {
-        AppConfig.errorLog('❌ UserProvider: Anonymous sign-in failed - no user returned');
+        // AppConfig.errorLog('❌ UserProvider: Anonymous sign-in failed - no user returned');
         return null;
       }
     } catch (e) {
-      AppConfig.errorLog('❌ UserProvider: Error during anonymous sign-in: $e');
+      // AppConfig.errorLog('❌ UserProvider: Error during anonymous sign-in: $e');
       return null;
     }
   }
@@ -53,15 +53,15 @@ class UserNotifier extends StateNotifier<AnonymousUser?> {
   /// Sign out user
   Future<void> signOut() async {
     try {
-      AppConfig.infoLog('🔄 UserProvider: Starting sign-out...');
+      // AppConfig.infoLog('🔄 UserProvider: Starting sign-out...');
       
       final supabase = Supabase.instance.client;
       await supabase.auth.signOut();
       
       state = null;
-      AppConfig.infoLog('✅ UserProvider: Sign-out successful');
+      // AppConfig.infoLog('✅ UserProvider: Sign-out successful');
     } catch (e) {
-      AppConfig.errorLog('❌ UserProvider: Error during sign-out: $e');
+      // AppConfig.errorLog('❌ UserProvider: Error during sign-out: $e');
     }
   }
 
@@ -79,7 +79,7 @@ class UserNotifier extends StateNotifier<AnonymousUser?> {
     if (state != null) {
       final updatedUser = state!.copyWith(displayName: newName);
       state = updatedUser;
-      AppConfig.infoLog('✅ UserProvider: Display name updated to: $newName');
+      // AppConfig.infoLog('✅ UserProvider: Display name updated to: $newName');
     }
   }
 
@@ -92,10 +92,10 @@ class UserNotifier extends StateNotifier<AnonymousUser?> {
       if (session?.user != null) {
         final user = AnonymousUser.fromSupabase(session!.user!.toJson());
         state = user;
-        AppConfig.infoLog('✅ UserProvider: User data refreshed: ${user.id}');
+        // AppConfig.infoLog('✅ UserProvider: User data refreshed: ${user.id}');
       }
     } catch (e) {
-      AppConfig.errorLog('❌ UserProvider: Error refreshing user: $e');
+      // AppConfig.errorLog('❌ UserProvider: Error refreshing user: $e');
     }
   }
 
@@ -103,7 +103,7 @@ class UserNotifier extends StateNotifier<AnonymousUser?> {
   Future<List<Map<String, dynamic>>> getUserReports() async {
     try {
       if (state == null) {
-        AppConfig.errorLog('❌ UserProvider: No user signed in');
+        // AppConfig.errorLog('❌ UserProvider: No user signed in');
         return [];
       }
 
@@ -114,10 +114,10 @@ class UserNotifier extends StateNotifier<AnonymousUser?> {
           .eq('user_id', state!.id)
           .order('created_at', ascending: false);
 
-      AppConfig.infoLog('✅ UserProvider: Fetched ${response.length} user reports');
+      // AppConfig.infoLog('✅ UserProvider: Fetched ${response.length} user reports');
       return List<Map<String, dynamic>>.from(response);
     } catch (e) {
-      AppConfig.errorLog('❌ UserProvider: Error fetching user reports: $e');
+      // AppConfig.errorLog('❌ UserProvider: Error fetching user reports: $e');
       return [];
     }
   }
@@ -126,7 +126,7 @@ class UserNotifier extends StateNotifier<AnonymousUser?> {
   Future<bool> updateReportStatus(String reportId, String newStatus) async {
     try {
       if (state == null) {
-        AppConfig.errorLog('❌ UserProvider: No user signed in');
+        // AppConfig.errorLog('❌ UserProvider: No user signed in');
         return false;
       }
 
@@ -137,10 +137,10 @@ class UserNotifier extends StateNotifier<AnonymousUser?> {
           .eq('id', reportId)
           .eq('user_id', state!.id); // Ensure user owns the report
 
-      AppConfig.infoLog('✅ UserProvider: Report status updated to: $newStatus');
+      // AppConfig.infoLog('✅ UserProvider: Report status updated to: $newStatus');
       return true;
     } catch (e) {
-      AppConfig.errorLog('❌ UserProvider: Error updating report status: $e');
+      // AppConfig.errorLog('❌ UserProvider: Error updating report status: $e');
       return false;
     }
   }
@@ -149,7 +149,7 @@ class UserNotifier extends StateNotifier<AnonymousUser?> {
   Future<bool> deleteReport(String reportId) async {
     try {
       if (state == null) {
-        AppConfig.errorLog('❌ UserProvider: No user signed in');
+        // AppConfig.errorLog('❌ UserProvider: No user signed in');
         return false;
       }
 
@@ -160,10 +160,10 @@ class UserNotifier extends StateNotifier<AnonymousUser?> {
           .eq('id', reportId)
           .eq('user_id', state!.id); // Ensure user owns the report
 
-      AppConfig.infoLog('✅ UserProvider: Report deleted successfully');
+      // AppConfig.infoLog('✅ UserProvider: Report deleted successfully');
       return true;
     } catch (e) {
-      AppConfig.errorLog('❌ UserProvider: Error deleting report: $e');
+      // AppConfig.errorLog('❌ UserProvider: Error deleting report: $e');
       return false;
     }
   }
@@ -172,7 +172,7 @@ class UserNotifier extends StateNotifier<AnonymousUser?> {
   Future<Map<String, dynamic>> getUserReportStats() async {
     try {
       if (state == null) {
-        AppConfig.errorLog('❌ UserProvider: No user signed in');
+        // AppConfig.errorLog('❌ UserProvider: No user signed in');
         return {};
       }
 
@@ -201,10 +201,10 @@ class UserNotifier extends StateNotifier<AnonymousUser?> {
         'severity_breakdown': severityCounts,
       };
 
-      AppConfig.infoLog('✅ UserProvider: Fetched user report stats: $stats');
+      // AppConfig.infoLog('✅ UserProvider: Fetched user report stats: $stats');
       return stats;
     } catch (e) {
-      AppConfig.errorLog('❌ UserProvider: Error fetching user stats: $e');
+      // AppConfig.errorLog('❌ UserProvider: Error fetching user stats: $e');
       return {};
     }
   }

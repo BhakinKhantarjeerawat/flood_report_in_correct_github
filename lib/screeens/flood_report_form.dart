@@ -10,10 +10,30 @@ import 'dart:io';
 import 'dart:async';
 import '../models/flood.dart';
 import '../providers/user_provider.dart';
+import 'dart:math';
+import 'package:latlong2/latlong.dart';
 
 // 🎛️ DEVELOPMENT TOGGLE: Easy switch between mock and real GPS
 // Change this to false when you want to test with real GPS
 const bool useMockLocation = true;
+
+/// Generates random coordinates within Thailand's boundaries
+/// Thailand: 5.6123°N to 20.4651°N, 97.3438°E to 105.6368°E
+LatLng _generateRandomThailandLocation() {
+  final random = Random();
+  
+  // Thailand boundaries
+  const double minLat = 10.6123;   // Southernmost point (Narathiwat)
+  const double maxLat = 16.4651;  // Northernmost point (Chiang Rai)
+  const double minLng = 97.3438;  // Westernmost point (Mae Hong Son)
+  const double maxLng = 105.6368; // Easternmost point (Ubon Ratchathani)
+  
+  // Generate random coordinates within Thailand
+  final double randomLat = minLat + (random.nextDouble() * (maxLat - minLat));
+  final double randomLng = minLng + (random.nextDouble() * (maxLng - minLng));
+  
+  return LatLng(randomLat, randomLng);
+}
 
 
 class FloodReportForm extends ConsumerStatefulWidget {
@@ -74,9 +94,10 @@ class _FloodReportFormState extends ConsumerState<FloodReportForm> {
 
     try {
       if (useMockLocation) {
-        // 🎯 MOCK LOCATION: Using Bangkok location for development
-        const double mockLatitude = 13.7563;  // Bangkok center
-        const double mockLongitude = 100.5018;
+        // 🎯 MOCK LOCATION: Using random Thailand location for development
+        final randomLocation = _generateRandomThailandLocation();
+        final double mockLatitude = randomLocation.latitude;
+        final double mockLongitude = randomLocation.longitude;
         
         // Simulate a small delay to show loading state
         await Future.delayed(const Duration(milliseconds: 800));
@@ -90,8 +111,8 @@ class _FloodReportFormState extends ConsumerState<FloodReportForm> {
         // Get location name for the mock coordinates
         await _getLocationName();
         
-        // Show success message
-        _showSuccessSnackBar('📍 Mock location set: Bangkok, Thailand');
+        // Show success message with random location
+        _showSuccessSnackBar('📍 Mock location set: Random location in Thailand (${mockLatitude.toStringAsFixed(4)}, ${mockLongitude.toStringAsFixed(4)})');
         
       } else {
         // 📍 REAL GPS: Using actual device location
