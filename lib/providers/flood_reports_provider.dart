@@ -12,6 +12,7 @@ class FloodReportsNotifier extends StateNotifier<AsyncValue<List<Flood>>> {
   /// Fetch all flood reports from Supabase
   Future<void> fetchAllReports() async {
     try {
+      AppConfig.infoLog('🔄 FloodReportsProvider: Fetching all flood reports...');
       
       state = const AsyncValue.loading();
       
@@ -21,12 +22,22 @@ class FloodReportsNotifier extends StateNotifier<AsyncValue<List<Flood>>> {
           .order('created_at', ascending: false);
       
       if (response != null) {
+        AppConfig.infoLog('🔄 FloodReportsProvider: Raw response from Supabase: $response');
+        
         final List<Flood> reports = response.map<Flood>((data) {
-          return Flood.fromMap(data);
+          try {
+            AppConfig.infoLog('🔄 FloodReportsProvider: Processing data: $data');
+            return Flood.fromMap(data);
+          } catch (e) {
+            AppConfig.errorLog('❌ FloodReportsProvider: Error processing data $data: $e');
+            rethrow;
+          }
         }).toList();
         
+        AppConfig.infoLog('✅ FloodReportsProvider: Fetched ${reports.length} reports');
         state = AsyncValue.data(reports);
       } else {
+        AppConfig.errorLog('❌ FloodReportsProvider: No response from Supabase');
         state = const AsyncValue.data([]);
       }
     } catch (e) {

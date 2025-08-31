@@ -51,16 +51,22 @@ class Flood extends Equatable {
   };
 
   static Flood fromMap(Map<String, dynamic> m) => Flood(
-    id: m['id'],
-    userId: m['userId'] ?? 'unknown',
-    lat: (m['lat'] as num).toDouble(),
-    lng: (m['lng'] as num).toDouble(),
-    severity: m['severity'],
-    depthCm: m['depthCm'],
+    id: m['id'] ?? '',
+    userId: m['user_id'] ?? m['userId'] ?? 'unknown', // Handle both user_id and userId
+    lat: (m['lat'] as num?)?.toDouble() ?? 0.0,
+    lng: (m['lng'] as num?)?.toDouble() ?? 0.0,
+    severity: m['severity'] ?? 'passable',
+    depthCm: m['depth_cm'] ?? m['depthCm'], // Handle both depth_cm and depthCm
     note: m['note'],
-    photoUrls: (m['photoUrls'] as List?)?.cast<String>() ?? const [],
-    createdAt: DateTime.fromMillisecondsSinceEpoch(m['createdAt'], isUtc: true).toLocal(),
-    expiresAt: DateTime.fromMillisecondsSinceEpoch(m['expiresAt'], isUtc: true).toLocal(),
+    photoUrls: (m['photo_urls'] as List?)?.cast<String>() ?? 
+               (m['photoUrls'] as List?)?.cast<String>() ?? 
+               const [], // Handle both photo_urls and photoUrls
+    createdAt: m['created_at'] != null 
+        ? DateTime.parse(m['created_at']).toLocal()
+        : DateTime.now(), // Handle ISO string format
+    expiresAt: m['expires_at'] != null 
+        ? DateTime.parse(m['expires_at']).toLocal()
+        : DateTime.now().add(const Duration(hours: 6)), // Handle ISO string format
     confirms: (m['confirms'] ?? 0) as int,
     flags: (m['flags'] ?? 0) as int,
     status: m['status'] ?? "active",

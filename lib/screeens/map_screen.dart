@@ -111,7 +111,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 
 Future<void> _generateMarkers() async {
   try {
-    AppConfig.infoLog('🗺️ MapScreen: Generating markers from Supabase data...');
+         debugPrint('🗺️ MapScreen: Generating markers from Supabase data...');
     
     // Get flood reports from the Supabase provider
     final reportsAsync = ref.read(floodReportsProvider);
@@ -125,10 +125,10 @@ Future<void> _generateMarkers() async {
       final currentReportsAsync = ref.read(floodReportsProvider);
       if (currentReportsAsync.hasValue) {
         _allFloodReports = currentReportsAsync.value!;
-        AppConfig.infoLog('🗺️ MapScreen: Fetched ${_allFloodReports.length} reports from Supabase');
+        debugPrint('🗺️ MapScreen: Fetched ${_allFloodReports.length} reports from Supabase');
       } else {
         _allFloodReports = [];
-        AppConfig.infoLog('🗺️ MapScreen: No reports available');
+        debugPrint('🗺️ MapScreen: No reports available');
       }
     }
 
