@@ -7,6 +7,7 @@ import 'package:flutter_map/flutter_map.dart';
 import '../models/flood.dart';
 import '../providers/flood_reports_provider.dart';
 import '../providers/location_provider.dart';
+import '../providers/marker_popup_provider.dart';
 import '../widgets/marker_filter_toggle.dart';
 
 /// Provider for managing map markers
@@ -170,7 +171,8 @@ class MarkerNotifier extends StateNotifier<List<Marker>> {
 
   /// Handle marker tap
   void _onMarkerTap(Flood flood) {
-    // TODO: Show popup in Phase 3
+    // Show popup with flood details
+    _ref.read(markerPopupProvider.notifier).showPopup(flood);
     debugPrint('📍 Marker tapped: ${flood.id} at ${flood.lat}, ${flood.lng}');
   }
 

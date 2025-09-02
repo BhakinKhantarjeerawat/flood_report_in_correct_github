@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/map_controller_provider.dart';
 import '../providers/location_provider.dart';
 import '../providers/marker_provider.dart';
-import '../services/location_service.dart';
 import '../widgets/map_widget.dart';
 import '../widgets/marker_filter_toggle.dart';
 import '../widgets/map_app_bar.dart';
@@ -14,6 +13,8 @@ import '../widgets/map_loading_widget.dart';
 import '../services/map_navigation_service.dart';
 import '../utils/snackbar_utils.dart';
 import '../providers/map_navigation_provider.dart';
+import '../providers/marker_popup_provider.dart';
+import '../widgets/flood_marker_popup.dart';
 
 class MapScreen extends ConsumerStatefulWidget {
   const MapScreen({super.key});
@@ -69,15 +70,33 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               onMapTap: (tapPosition, point) {
                 // Reset current location state when user manually moves map
                 _resetCurrentLocationState();
-                // TODO: Handle map tap in Phase 3
+                // Hide popup when tapping on map
+                ref.read(markerPopupProvider.notifier).hidePopup();
               },
               onMapReady: _onMapReady,
             ),
             // Marker filter toggle positioned at top-right
-          const  Positioned(
+            const Positioned(
               top: 16,
               right: 16,
               child: MarkerFilterToggle(),
+            ),
+            // Marker popup overlay
+            Consumer(
+              builder: (context, ref, child) {
+                final popupState = ref.watch(markerPopupProvider);
+                if (popupState.isVisible && popupState.selectedFlood != null) {
+                  return Positioned.fill(
+                    child: Center(
+                      child: FloodMarkerPopup(
+                        flood: popupState.selectedFlood!,
+                        onClose: () => ref.read(markerPopupProvider.notifier).hidePopup(),
+                      ),
+                    ),
+                  );
+                }
+                return const SizedBox.shrink();
+              },
             ),
           ],
         ),
