@@ -20,6 +20,7 @@ class MapScreen extends ConsumerStatefulWidget {
 class _MapScreenState extends ConsumerState<MapScreen> {
   // State variables
   bool _isMapReady = false;
+  bool _hasGoneToCurrentLocation = false;
   
   @override
   void initState() {
@@ -44,12 +45,12 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     final locationNotifier = ref.read(currentLocationProvider.notifier);
     final currentLocation = locationNotifier.currentLocation;
     
-    // Check if map controller is available
-    final mapController = ref.read(mapControllerProvider);
-    if (mapController == null) {
+    // Check if map is ready using the notifier's isReady getter
+    final mapNotifier = ref.read(mapControllerProvider.notifier);
+    if (!mapNotifier.isReady) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Map controller not ready, please wait...'),
+        SnackBar(
+          content: Text('Map not ready yet. Please wait...'),
           duration: Duration(seconds: 2),
         ),
       );
@@ -66,11 +67,22 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           .read(mapControllerProvider.notifier)
           .moveToLocation(LocationService.bangkokCenter, zoom: 10.0);
     }
+    
+    // Update state to show we've gone to current location
+    setState(() {
+      _hasGoneToCurrentLocation = true;
+    });
   }
 
   void _onMapReady() {
     setState(() {
       _isMapReady = true;
+    });
+  }
+
+  void _resetCurrentLocationState() {
+    setState(() {
+      _hasGoneToCurrentLocation = false;
     });
   }
 
@@ -120,6 +132,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               center: currentLocation,
               markers: markers,
               onMapTap: (tapPosition, point) {
+                // Reset current location state when user manually moves map
+                _resetCurrentLocationState();
                 // TODO: Handle map tap in Phase 3
               },
               onMapReady: _onMapReady,
@@ -139,10 +153,12 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             // Go to Current Location Button
             FloatingActionButton(
               onPressed: _goToCurrentLocation,
-              backgroundColor: Colors.white,
-              foregroundColor: Colors.blue,
+              backgroundColor: _hasGoneToCurrentLocation ? Colors.green : Colors.white,
+              foregroundColor: _hasGoneToCurrentLocation ? Colors.white : Colors.blue,
               heroTag: 'currentLocation',
-              child: const Icon(Icons.my_location),
+              child: Icon(
+                _hasGoneToCurrentLocation ? Icons.check_circle : Icons.my_location,
+              ),
             ),
             const SizedBox(height: 16),
             // Report Flood Button
@@ -153,7 +169,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                     builder: (context) => const FloodReportForm(),
                   ),
                 );
-                              if (result != null && result is Flood) {
+                if (result != null && result is Flood) {
                 // Add new flood report to map
                 ref.read(markerProvider.notifier).addMarker(result);
                 _showSuccessSnackBar('New flood report added to map!');
