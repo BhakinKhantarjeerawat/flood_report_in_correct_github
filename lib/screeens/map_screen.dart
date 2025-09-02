@@ -7,6 +7,7 @@ import '../providers/location_provider.dart';
 import '../providers/marker_provider.dart';
 import '../services/location_service.dart';
 import '../widgets/map_widget.dart';
+import '../widgets/marker_filter_toggle.dart';
 import 'flood_report_form.dart';
 
 class MapScreen extends ConsumerStatefulWidget {
@@ -76,7 +77,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   @override
   Widget build(BuildContext context) {
     final locationAsync = ref.watch(currentLocationProvider);
-    final markers = ref.watch(markerProvider);
+    final markers = ref.watch(displayMarkersProvider);
     
     return locationAsync.when(
       loading: () => const Scaffold(
@@ -102,14 +103,34 @@ class _MapScreenState extends ConsumerState<MapScreen> {
         ),
       ),
       data: (currentLocation) => Scaffold(
-        appBar: AppBar(title: Text('Total markers: '+markers.length.toString())),
-        body: MapWidget(
-          center: currentLocation,
-          markers: markers,
-          onMapTap: (tapPosition, point) {
-            // TODO: Handle map tap in Phase 3
-          },
-          onMapReady: _onMapReady,
+        appBar: AppBar(
+          title: Consumer(
+            builder: (context, ref, child) {
+              final allMarkers = ref.watch(markerProvider);
+              final displayMarkers = ref.watch(displayMarkersProvider);
+              final isFiltered = ref.watch(markerFilterProvider);
+              final filterText = isFiltered ? '200km' : 'All';
+              return Text('Markers: ${displayMarkers.length}/${allMarkers.length} ($filterText)');
+            },
+          ),
+        ),
+        body: Stack(
+          children: [
+            MapWidget(
+              center: currentLocation,
+              markers: markers,
+              onMapTap: (tapPosition, point) {
+                // TODO: Handle map tap in Phase 3
+              },
+              onMapReady: _onMapReady,
+            ),
+            // Marker filter toggle positioned at top-right
+            Positioned(
+              top: 16,
+              right: 16,
+              child: const MarkerFilterToggle(),
+            ),
+          ],
         ),
         floatingActionButton: Column(
           mainAxisAlignment: MainAxisAlignment.end,
