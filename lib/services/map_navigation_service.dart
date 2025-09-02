@@ -16,7 +16,7 @@ class MapNavigationService {
     required MapControllerNotifier mapNotifier,
     required LocationNotifier locationNotifier,
     required bool isCurrentlyZoomed,
-    required Function(bool) onStateChange,
+    required VoidCallback onStateChange,
     required Function(String) onError,
   }) async {
     try {
@@ -37,7 +37,7 @@ class MapNavigationService {
       mapNotifier.moveToLocation(targetLocation, zoom: zoomLevel);
       
       // Update state (toggle the zoom state)
-      onStateChange(!isCurrentlyZoomed);
+      onStateChange();
       
     } catch (e) {
       onError('Failed to navigate to location: $e');

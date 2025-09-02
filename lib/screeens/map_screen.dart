@@ -13,6 +13,7 @@ import '../widgets/map_error_widget.dart';
 import '../widgets/map_loading_widget.dart';
 import '../services/map_navigation_service.dart';
 import '../utils/snackbar_utils.dart';
+import '../providers/map_navigation_provider.dart';
 
 class MapScreen extends ConsumerStatefulWidget {
   const MapScreen({super.key});
@@ -22,9 +23,6 @@ class MapScreen extends ConsumerStatefulWidget {
 }
 
 class _MapScreenState extends ConsumerState<MapScreen> {
-  // State variables
-  bool _isMapReady = false;
-  bool _hasGoneToCurrentLocation = false;
   
   @override
   void initState() {
@@ -33,26 +31,24 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   }
 
   void _goToCurrentLocation() async {
+    final navigationNotifier = ref.read(mapNavigationProvider.notifier);
+    
     await MapNavigationService.navigateToLocation(
       mapNotifier: ref.read(mapControllerProvider.notifier),
       locationNotifier: ref.read(currentLocationProvider.notifier),
-      isCurrentlyZoomed: _hasGoneToCurrentLocation,
-      onStateChange: (isZoomed) => setState(() => _hasGoneToCurrentLocation = isZoomed),
+      isCurrentlyZoomed: navigationNotifier.hasGoneToCurrentLocation,
+      onStateChange: () => navigationNotifier.toggleLocationView(),
       onError: (errorMessage) => SnackBarUtils.showError(context, errorMessage),
     );
   }
 
   void _onMapReady() {
-    setState(() {
-      _isMapReady = true;
-    });
+    ref.read(mapNavigationProvider.notifier).setMapReady();
   }
 
   // Reset the toggle state when user manually interacts with map
   void _resetCurrentLocationState() {
-    setState(() {
-      _hasGoneToCurrentLocation = false;
-    });
+    ref.read(mapNavigationProvider.notifier).resetLocationState();
   }
 
   @override
@@ -85,9 +81,14 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             ),
           ],
         ),
-        floatingActionButton: MapFloatingActions(
-          onGoToCurrentLocation: _goToCurrentLocation,
-          hasGoneToCurrentLocation: _hasGoneToCurrentLocation,
+        floatingActionButton: Consumer(
+          builder: (context, ref, child) {
+            final navigationState = ref.watch(mapNavigationProvider);
+            return MapFloatingActions(
+              onGoToCurrentLocation: _goToCurrentLocation,
+              hasGoneToCurrentLocation: navigationState.hasGoneToCurrentLocation,
+            );
+          },
         ),
       ),
     );
