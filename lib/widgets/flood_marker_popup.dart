@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/flood.dart';
 
-class FloodMarkerPopup extends StatelessWidget {
+class FloodMarkerPopup extends ConsumerWidget {
   final Flood flood;
   final VoidCallback onClose;
 
@@ -12,7 +13,7 @@ class FloodMarkerPopup extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final severityColor = _getSeverityColor(flood.severity);
     
     return Container(
@@ -25,26 +26,6 @@ class FloodMarkerPopup extends StatelessWidget {
           color: severityColor,
           width: 3,
         ),
-        // gradient: LinearGradient(
-        //   begin: Alignment.topLeft,
-        //   end: Alignment.bottomRight,
-        //   colors: [
-        //     Colors.white,
-        //     severityColor.withOpacity(0.05),
-        //   ],
-        // ),
-        // boxShadow: [
-        //   BoxShadow(
-        //     color: severityColor.withOpacity(0.2),
-        //     blurRadius: 8,
-        //     offset: const Offset(0, 4),
-        //   ),
-        //   BoxShadow(
-        //     color: Colors.black.withOpacity(0.1),
-        //     blurRadius: 8,
-        //     offset: const Offset(0, 4),
-        //   ),
-        // ],
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,

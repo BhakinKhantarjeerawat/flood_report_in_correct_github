@@ -690,13 +690,13 @@ class _FloodReportFormState extends ConsumerState<FloodReportForm> {
               const SizedBox(height: 24),
               
               // Description Section
-              _buildSectionHeader('📝 Description (Optional)', Icons.description),
-              _buildDescriptionInput(),
-              const SizedBox(height: 24),
+              // _buildSectionHeader('📝 Description (Optional)', Icons.description),
+              // _buildDescriptionInput(),
+              // const SizedBox(height: 24),
               
               // Photos Section
-              _buildSectionHeader('📸 Photos', Icons.photo_camera),
-              _buildPhotoSection(),
+              // _buildSectionHeader('📸 Photos', Icons.photo_camera),
+              // _buildPhotoSection(),
               const SizedBox(height: 32),
               
               // Submit Button
