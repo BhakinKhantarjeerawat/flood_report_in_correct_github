@@ -45,13 +45,11 @@ List<Marker> _filterMarkersByDistance(List<Marker> markers, LatLng userLocation,
 /// Provider for filtered markers within 200km of user location
 final filteredMarkersProvider = Provider<List<Marker>>((ref) {
   final allMarkers = ref.watch(markerProvider);
-  final userLocation = ref.watch(currentLocationProvider);
+  // final userLocation = ref.watch(currentLocationProvider);
+  final userLocation = const LatLng(13.7563, 100.5018);
+
   
-  return userLocation.when(
-    loading: () => allMarkers,
-    error: (_, __) => allMarkers,
-    data: (location) => _filterMarkersByDistance(allMarkers, location, maxDistanceKm: 200),
-  );
+  return  _filterMarkersByDistance(allMarkers, userLocation, maxDistanceKm: 200);
 });
 
 /// Provider for markers based on user filter preference

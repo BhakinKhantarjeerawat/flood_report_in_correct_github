@@ -47,7 +47,7 @@ class MyApp extends StatelessWidget {
       routes: {
         '/map': (context) => const MapScreen(),
         '/auth': (context) => const AuthScreen(),
-        '/update-reminder': (context) => const UpdateReminderScreen(),
+        // '/update-reminder': (context) => const UpdateReminderScreen(),
       },
     );
   }

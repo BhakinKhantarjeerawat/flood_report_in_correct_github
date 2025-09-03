@@ -230,23 +230,23 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                 ),
                 const SizedBox(height: 32),
                 
-                // Skip to Update Reminder
-                TextButton(
-                  onPressed: () {
-                    Navigator.of(context).pushReplacement(
-                      MaterialPageRoute(
-                        builder: (context) => const UpdateReminderScreen(),
-                      ),
-                    );
-                  },
-                  child: const Text(
-                    'Skip to App',
-                    style: TextStyle(
-                      color: Colors.white70,
-                      fontSize: 14,
-                    ),
-                  ),
-                ),
+                // // Skip to Update Reminder
+                // TextButton(
+                //   onPressed: () {
+                //     Navigator.of(context).pushReplacement(
+                //       MaterialPageRoute(
+                //         builder: (context) => const UpdateReminderScreen(),
+                //       ),
+                //     );
+                //   },
+                //   child: const Text(
+                //     'Skip to App',
+                //     style: TextStyle(
+                //       color: Colors.white70,
+                //       fontSize: 14,
+                //     ),
+                //   ),
+                // ),
               ],
             ),
           ),

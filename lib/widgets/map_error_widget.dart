@@ -24,8 +24,8 @@ class MapErrorWidget extends ConsumerWidget {
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: () {
-                ref.read(currentLocationProvider.notifier).refreshLocation();
-                SnackBarUtils.showInfo(context, 'Refreshing location...');
+                // ref.read(currentLocationProvider.notifier).refreshLocation();
+                // SnackBarUtils.showInfo(context, 'Refreshing location...');
               },
               child: const Text('Retry'),
             ),

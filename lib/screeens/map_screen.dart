@@ -1,20 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-import '../providers/map_controller_provider.dart';
-import '../providers/location_provider.dart';
-import '../providers/marker_provider.dart';
-import '../widgets/map_widget.dart';
-import '../widgets/marker_filter_toggle.dart';
-import '../widgets/map_app_bar.dart';
-import '../widgets/map_floating_actions.dart';
-import '../widgets/map_error_widget.dart';
-import '../widgets/map_loading_widget.dart';
-import '../services/map_navigation_service.dart';
-import '../utils/snackbar_utils.dart';
-import '../providers/map_navigation_provider.dart';
-import '../providers/marker_popup_provider.dart';
-import '../widgets/flood_marker_popup.dart';
+import 'package:latlong2/latlong.dart';
 
 class MapScreen extends ConsumerStatefulWidget {
   const MapScreen({super.key});
@@ -24,92 +11,142 @@ class MapScreen extends ConsumerStatefulWidget {
 }
 
 class _MapScreenState extends ConsumerState<MapScreen> {
-  
+  MapController _mapController = MapController();
+
   @override
   void initState() {
     super.initState();
-    // Markers are now handled by the provider
+    _mapController = MapController();
   }
 
-  void _goToCurrentLocation() async {
-    final navigationNotifier = ref.read(mapNavigationProvider.notifier);
-    
-    await MapNavigationService.navigateToLocation(
-      mapNotifier: ref.read(mapControllerProvider.notifier),
-      locationNotifier: ref.read(currentLocationProvider.notifier),
-      isCurrentlyZoomed: navigationNotifier.hasGoneToCurrentLocation,
-      onStateChange: () => navigationNotifier.toggleLocationView(),
-      onError: (errorMessage) => SnackBarUtils.showError(context, errorMessage),
-    );
-  }
-
-  void _onMapReady() {
-    ref.read(mapNavigationProvider.notifier).setMapReady();
-  }
-
-  // Reset the toggle state when user manually interacts with map
-  void _resetCurrentLocationState() {
-    ref.read(mapNavigationProvider.notifier).resetLocationState();
+  @override
+  void dispose() {
+    _mapController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final locationAsync = ref.watch(currentLocationProvider);
-    final markers = ref.watch(displayMarkersProvider);
-    
-    return locationAsync.when(
-      loading: () => const MapLoadingWidget(),
-      error: (error, stack) => MapErrorWidget(error: error),
-      data: (currentLocation) => Scaffold(
-        appBar: const MapAppBar(),
-        body: Stack(
-          children: [
-            MapWidget(
-              center: currentLocation,
-              markers: markers,
-              onMapTap: (tapPosition, point) {
-                // Reset current location state when user manually moves map
-                _resetCurrentLocationState();
-                // Hide popup when tapping on map
-                ref.read(markerPopupProvider.notifier).hidePopup();
-              },
-              onMapReady: _onMapReady,
-            ),
-            // Marker filter toggle positioned at top-right
-            const Positioned(
-              top: 16,
-              right: 16,
-              child: MarkerFilterToggle(),
-            ),
-            // Marker popup overlay
-            Consumer(
-              builder: (context, ref, child) {
-                final popupState = ref.watch(markerPopupProvider);
-                if (popupState.isVisible && popupState.selectedFlood != null) {
-                  return Positioned.fill(
-                    child: Center(
-                      child: FloodMarkerPopup(
-                        flood: popupState.selectedFlood!,
-                        onClose: () => ref.read(markerPopupProvider.notifier).hidePopup(),
-                      ),
+    final isFlutterMapReady = ref.watch(isMapReadyProvider);
+    final tapPositionPoint = ref.watch(tapPositionPointProvider);
+    final mapCamara = ref.watch(mapCameraProvider);
+    final initialCenter = ref.watch(initialCenterProvider);
+    final initialZoom = ref.watch(initialZoomProvider);
+    final markers = ref.watch(markersProvider);
+
+    return Scaffold(
+      body: Stack(
+        children: [
+          Column(
+            children: [
+              SizedBox(
+                height: MediaQuery.of(context).size.height * 0.2,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                        onPressed: () {
+                          _mapController.move(
+                              const LatLng(15.7563, 108.7025), 6.0);
+                        },
+                        icon: const Icon(Icons.location_on)),
+                    Text(tapPositionPoint.toString()),
+                    if (mapCamara != null) Text(mapCamara.center.toString()),
+                    Text(initialCenter.latitude.toString()),
+                    Text(initialZoom.toString())
+                  ],
+                ),
+              ),
+              SizedBox(
+                height: MediaQuery.of(context).size.height  * 0.8,
+                child: FlutterMap(
+                  mapController: _mapController,
+                  options: MapOptions(
+                    initialCenter: ref.watch(initialCenterProvider),
+                    initialZoom: ref.watch(initialZoomProvider),
+                    onTap: (tapPosition, point) {
+                      ref.read(tapPositionPointProvider.notifier).state =
+                          point;
+                      debugPrint(
+                          '🎯 MAP TAP: ${point.latitude}, ${point.longitude}');
+                    },
+                    onPositionChanged: (position, hasGesture) {
+                      ref.read(mapCameraProvider.notifier).state = position;
+                      debugPrint(
+                          '📍 POSITION CHANGED: ${position.center}, zoom: ${position.zoom}');
+                    },
+                    onMapReady: () async {
+                      //todo:
+                      await Future.delayed(const Duration(seconds: 2));
+                      ref.read(isMapReadyProvider.notifier).state = true;
+                      debugPrint('✅ MAP READY!');
+                    },
+                  ),
+                  children: [
+                    TileLayer(
+                      urlTemplate:
+                          'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                      userAgentPackageName: 'com.example.flood_marker',
                     ),
-                  );
-                }
-                return const SizedBox.shrink();
-              },
-            ),
-          ],
-        ),
-        floatingActionButton: Consumer(
-          builder: (context, ref, child) {
-            final navigationState = ref.watch(mapNavigationProvider);
-            return MapFloatingActions(
-              onGoToCurrentLocation: _goToCurrentLocation,
-              hasGoneToCurrentLocation: navigationState.hasGoneToCurrentLocation,
-            );
-          },
-        ),
+                    MarkerLayer(markers: markers),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          isFlutterMapReady
+              ? Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Align(
+                      alignment: Alignment.bottomRight,
+                      child: ElevatedButton(
+                          onPressed: () {
+                            ref.read(markersProvider.notifier).state = [
+                              const Marker(
+                                point: LatLng(13.7563, 100.5018),
+                                child: Icon(Icons.location_on),
+                              ),
+                              const Marker(
+                                point: LatLng(13.74607, 100.79339),
+                                child: Icon(Icons.location_on),
+                              ),
+                            ];
+                          },
+                          child: const Text('test markers'))),
+                )
+              : const Align(
+                  alignment: Alignment.center,
+                  child: CircularProgressIndicator()),
+        ],
       ),
     );
   }
 }
+
+final initialCenterProvider = StateProvider<LatLng>((ref) {
+  return const LatLng(13.7563, 100.5018);
+});
+
+final initialZoomProvider = StateProvider<double>((ref) {
+  return 9.0;
+});
+
+///////////
+////////////////
+final tapPositionPointProvider = StateProvider<LatLng?>((ref) {
+  return null;
+});
+
+final mapCameraProvider = StateProvider<MapCamera?>((ref) {
+  return null;
+});
+
+final isMapReadyProvider = StateProvider<bool>((ref) {
+  return false;
+});
+//////////
+//////////
+
+final markersProvider = StateProvider<List<Marker>>((ref) {
+  return [];
+});
