@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
+import '../widgets/marker_popup.dart';
 
 class MapScreen extends ConsumerStatefulWidget {
   const MapScreen({super.key});
@@ -33,6 +34,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     final initialCenter = ref.watch(initialCenterProvider);
     final initialZoom = ref.watch(initialZoomProvider);
     final markers = ref.watch(markersProvider);
+    final selectedMarker = ref.watch(selectedMarkerProvider);
 
     return Scaffold(
       body: Stack(
@@ -58,18 +60,21 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                 ),
               ),
               SizedBox(
-                height: MediaQuery.of(context).size.height  * 0.8,
+                height: MediaQuery.of(context).size.height * 0.8,
                 child: FlutterMap(
                   mapController: _mapController,
                   options: MapOptions(
                     initialCenter: ref.watch(initialCenterProvider),
                     initialZoom: ref.watch(initialZoomProvider),
-                    onTap: (tapPosition, point) {
-                      ref.read(tapPositionPointProvider.notifier).state =
-                          point;
-                      debugPrint(
-                          '🎯 MAP TAP: ${point.latitude}, ${point.longitude}');
-                    },
+                                         onTap: (tapPosition, point) {
+                       ref.read(tapPositionPointProvider.notifier).state = point;
+                       // Close popup if tapping outside
+                       if (selectedMarker != null) {
+                         ref.read(selectedMarkerProvider.notifier).state = null;
+                       }
+                       debugPrint(
+                           '🎯 MAP TAP: ${point.latitude}, ${point.longitude}');
+                     },
                     onPositionChanged: (position, hasGesture) {
                       ref.read(mapCameraProvider.notifier).state = position;
                       debugPrint(
@@ -94,29 +99,54 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               ),
             ],
           ),
-          isFlutterMapReady
-              ? Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Align(
-                      alignment: Alignment.bottomRight,
-                      child: ElevatedButton(
-                          onPressed: () {
-                            ref.read(markersProvider.notifier).state = [
-                              const Marker(
-                                point: LatLng(13.7563, 100.5018),
-                                child: Icon(Icons.location_on),
-                              ),
-                              const Marker(
-                                point: LatLng(13.74607, 100.79339),
-                                child: Icon(Icons.location_on),
-                              ),
-                            ];
-                          },
-                          child: const Text('test markers'))),
-                )
-              : const Align(
-                  alignment: Alignment.center,
-                  child: CircularProgressIndicator()),
+                     // Marker popup overlay
+           if (selectedMarker != null)
+             Positioned.fill(
+               child: Center(
+                 child: MarkerPopup(
+                   markerPoint: selectedMarker,
+                   onClose: () {
+                     ref.read(selectedMarkerProvider.notifier).state = null;
+                   },
+                 ),
+               ),
+             ),
+           // Test button
+           isFlutterMapReady
+               ? Padding(
+                   padding: const EdgeInsets.all(16.0),
+                   child: Align(
+                       alignment: Alignment.bottomRight,
+                       child: ElevatedButton(
+                                                       onPressed: () {
+                              ref.read(markersProvider.notifier).state = [
+                                Marker(
+                                  point: const LatLng(13.7563, 100.5018),
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      ref.read(selectedMarkerProvider.notifier).state = 
+                                          const LatLng(13.7563, 100.5018);
+                                    },
+                                    child: const Icon(Icons.location_on),
+                                  ),
+                                ),
+                                Marker(
+                                  point: const LatLng(13.74607, 100.79339),
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      ref.read(selectedMarkerProvider.notifier).state = 
+                                          const LatLng(13.74607, 100.79339);
+                                    },
+                                    child: const Icon(Icons.location_on),
+                                  ),
+                                ),
+                              ];
+                            },
+                           child: const Text('test markers'))),
+                 )
+               : const Align(
+                   alignment: Alignment.center,
+                   child: CircularProgressIndicator()),
         ],
       ),
     );
@@ -149,4 +179,8 @@ final isMapReadyProvider = StateProvider<bool>((ref) {
 
 final markersProvider = StateProvider<List<Marker>>((ref) {
   return [];
+});
+
+final selectedMarkerProvider = StateProvider<LatLng?>((ref) {
+  return null;
 });
