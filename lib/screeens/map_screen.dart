@@ -37,6 +37,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     final initialZoom = ref.watch(initialZoomProvider);
     final selectedMarker = ref.watch(selectedMarkerProvider);
     final markersController = ref.watch(markersControllerProvider);
+    final convertFloodsToMarkers = ref.watch(convertFloodsToMarkersProvider);
 
     return Scaffold(
       body: Stack(
@@ -98,7 +99,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                           'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                       userAgentPackageName: 'com.example.flood_marker',
                     ),
-                    MarkerLayer(markers: markersController.valueOrNull ?? []),
+                    // MarkerLayer(markers: markersController.valueOrNull ?? []),
+                    MarkerLayer(markers: convertFloodsToMarkers.valueOrNull ?? []),
+
                   ],
                 ),
               ),
