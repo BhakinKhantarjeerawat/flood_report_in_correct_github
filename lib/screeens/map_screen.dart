@@ -1,3 +1,4 @@
+import 'package:flood_marker/models/flood.dart';
 import 'package:flood_marker/providers/markers_controller_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -34,7 +35,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     final mapCamara = ref.watch(mapCameraProvider);
     final initialCenter = ref.watch(initialCenterProvider);
     final initialZoom = ref.watch(initialZoomProvider);
-    final markers = ref.watch(markersProvider);
+    // final markers = ref.watch(markersProvider);
     final selectedMarker = ref.watch(selectedMarkerProvider);
     final markersController = ref.watch(markersControllerProvider);
 
@@ -43,11 +44,13 @@ class _MapScreenState extends ConsumerState<MapScreen> {
         children: [
           Column(
             children: [
+              //* 1. debug display part
               SizedBox(
                 height: MediaQuery.of(context).size.height * 0.2,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    const SizedBox(height: 39),
                     IconButton(
                         onPressed: () {
                           _mapController.move(
@@ -61,6 +64,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   ],
                 ),
               ),
+              //* 2. flutter map part
               SizedBox(
                 height: MediaQuery.of(context).size.height * 0.8,
                 child: FlutterMap(
@@ -101,19 +105,20 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               ),
             ],
           ),
-          // Marker popup overlay
+          //* 3. Marker popup overlay
           if (selectedMarker != null)
             Positioned.fill(
               child: Center(
                 child: MarkerPopup(
-                  markerPoint: selectedMarker,
+                  flood: selectedMarker,
+                  // flood: flood,
                   onClose: () {
                     ref.read(selectedMarkerProvider.notifier).state = null;
                   },
                 ),
               ),
             ),
-          // Test button
+          //* 4. Test button
           isFlutterMapReady
               ? Padding(
                   padding: const EdgeInsets.all(16.0),
@@ -121,31 +126,31 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                       alignment: Alignment.bottomRight,
                       child: ElevatedButton(
                           onPressed: () {
-                            ref.read(markersProvider.notifier).state = [
-                              Marker(
-                                point: const LatLng(13.7563, 100.5018),
-                                child: GestureDetector(
-                                  onTap: () {
-                                    ref
-                                        .read(selectedMarkerProvider.notifier)
-                                        .state = const LatLng(13.7563, 100.5018);
-                                  },
-                                  child: const Icon(Icons.location_on),
-                                ),
-                              ),
-                              Marker(
-                                point: const LatLng(13.74607, 100.79339),
-                                child: GestureDetector(
-                                  onTap: () {
-                                    ref
-                                            .read(selectedMarkerProvider.notifier)
-                                            .state =
-                                        const LatLng(13.74607, 100.79339);
-                                  },
-                                  child: const Icon(Icons.location_on),
-                                ),
-                              ),
-                            ];
+                            // ref.read(markersProvider.notifier).state = [
+                            //   Marker(
+                            //     point: const LatLng(13.7563, 100.5018),
+                            //     child: GestureDetector(
+                            //       onTap: () {
+                            //         ref
+                            //             .read(selectedMarkerProvider.notifier)
+                            //             .state = const LatLng(13.7563, 100.5018);
+                            //       },
+                            //       child: const Icon(Icons.location_on),
+                            //     ),
+                            //   ),
+                            //   Marker(
+                            //     point: const LatLng(13.74607, 100.79339),
+                            //     child: GestureDetector(
+                            //       onTap: () {
+                            //         ref
+                            //                 .read(selectedMarkerProvider.notifier)
+                            //                 .state =
+                            //             const LatLng(13.74607, 100.79339);
+                            //       },
+                            //       child: const Icon(Icons.location_on),
+                            //     ),
+                            //   ),
+                            // ];
                           },
                           child: const Text('test markers'))),
                 )
@@ -186,6 +191,6 @@ final markersProvider = StateProvider<List<Marker>>((ref) {
   return [];
 });
 
-final selectedMarkerProvider = StateProvider<LatLng?>((ref) {
+final selectedMarkerProvider = StateProvider<Flood?>((ref) {
   return null;
 });

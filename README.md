@@ -1,19 +1,12 @@
-# flood_marker
+///////////
+///////////
+🎯 For Next Time:
+Just run this single command to get everything started:
 
-A new Flutter project.
+open -a Docker && sleep 10 && cd /Users/bhakinkhantarjeerawat/Documents/flutter_projects/flood_marker/flood_marker && supabase start && open http://127.0.0.1:54323
 
-## Getting Started
-
-This project is a starting point for a Flutter application.
-
-A few resources to get you started if this is your first Flutter project:
-
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+///////////
+///////////
 
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';

@@ -1,4 +1,5 @@
 import 'package:flood_marker/models/flood.dart';
+import 'package:flood_marker/screeens/map_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 // import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,6 +11,9 @@ part 'markers_controller_provider.g.dart';
 
 @riverpod
 class MarkersController extends _$MarkersController {
+
+
+
   @override
   Future<List<Marker>> build() async {
     // final markers = await Supabase.instance.client.from('markers').select('*');
@@ -22,16 +26,12 @@ class MarkersController extends _$MarkersController {
       return Flood.fromMap(data);
     }).toList();
 
-    // return floods;
-
-      // Convert floods to markers
       final markers = _convertFloodsToMarkers(floods);
-      // state = AsyncValue.data(markers);
+
       return markers;
   }
-}
 
-  /// Convert Flood objects to clickable map markers
+   /// Convert Flood objects to clickable map markers
   List<Marker> _convertFloodsToMarkers(List<Flood> floods) {
     return floods.map((flood) {
       return Marker(
@@ -39,14 +39,18 @@ class MarkersController extends _$MarkersController {
         child: GestureDetector(
           onTap: () {
             // Set the selected marker for popup display
-            // ref.read(selectedMarkerProvider.notifier).state = 
-            //     LatLng(flood.lat, flood.lng);
+            ref.read(selectedMarkerProvider.notifier).state = 
+            flood;
+                // LatLng(flood.lat, flood.lng);
           },
           child: _getMarkerIcon(flood.severity),
         ),
       );
     }).toList();
   }
+}
+
+ 
 
   /// Get marker icon based on severity
   Widget _getMarkerIcon(String severity) {

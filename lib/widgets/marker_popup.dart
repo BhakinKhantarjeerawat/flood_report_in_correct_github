@@ -1,13 +1,13 @@
+import 'package:flood_marker/models/flood.dart';
 import 'package:flutter/material.dart';
-import 'package:latlong2/latlong.dart';
 
 class MarkerPopup extends StatelessWidget {
-  final LatLng markerPoint;
+  final Flood flood;
   final VoidCallback onClose;
 
   const MarkerPopup({
     super.key,
-    required this.markerPoint,
+    required this.flood,
     required this.onClose,
   });
 
@@ -36,15 +36,15 @@ class MarkerPopup extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
+            const  Row(
                 children: [
-                  const Icon(
+                   Icon(
                     Icons.location_on,
                     color: Colors.blue,
                     size: 24,
                   ),
-                  const SizedBox(width: 8),
-                  const Text(
+                  SizedBox(width: 8),
+                  Text(
                     'Marker Details',
                     style: TextStyle(
                       fontSize: 18,
@@ -72,14 +72,44 @@ class MarkerPopup extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                     Text(
+                      'ID: ${flood.id}',
+                      style: const TextStyle(fontSize: 14, color: Colors.grey),
+                    ),
+                       Text(
+                      'UserID: ${flood.userId}',
+                      style: const TextStyle(fontSize: 14, color: Colors.grey),
+                    ),
+                     Text(
+                      'Status: ${flood.status}',
+                      style: const TextStyle(fontSize: 14, color: Colors.grey),
+                    ),
+                    const Text("-----------------"),
                     Text(
-                      'Latitude: ${markerPoint.latitude.toStringAsFixed(6)}',
+                      'Latitude: ${flood.lat.toStringAsFixed(6)}',
                       style: const TextStyle(fontSize: 14, color: Colors.grey),
                     ),
                     Text(
-                      'Longitude: ${markerPoint.longitude.toStringAsFixed(6)}',
+                      'Longitude: ${flood.lng.toStringAsFixed(6)}',
                       style: const TextStyle(fontSize: 14, color: Colors.grey),
                     ),
+                    Text(
+                      'Depth: ${flood.depthCm}',
+                      style: const TextStyle(fontSize: 14, color: Colors.grey),
+                    ),
+                    Text(
+                      'ExpiresAt: ${flood.expiresAt}',
+                      style: const TextStyle(fontSize: 14, color: Colors.grey),
+                    ),
+                       Text(
+                      'CreatedAt: ${flood.createdAt}',
+                      style: const TextStyle(fontSize: 14, color: Colors.grey),
+                    ),
+                      Text(
+                      'Confirms: ${flood.confirms}',
+                      style: const TextStyle(fontSize: 14, color: Colors.grey),
+                    ),
+                      
                   ],
                 ),
               ),
