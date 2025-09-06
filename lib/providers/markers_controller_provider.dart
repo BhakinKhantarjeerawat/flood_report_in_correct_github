@@ -1,8 +1,8 @@
+import 'package:flood_marker/global_functions.dart/get_marker_icon.dart';
 import 'package:flood_marker/models/flood.dart';
 import 'package:flood_marker/screeens/map_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
-// import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -12,11 +12,8 @@ part 'markers_controller_provider.g.dart';
 @riverpod
 class MarkersController extends _$MarkersController {
 
-
-
   @override
   Future<List<Marker>> build() async {
-    // final markers = await Supabase.instance.client.from('markers').select('*');
     final response = await Supabase.instance.client
         .from('flood_reports')
         .select('*')
@@ -41,55 +38,53 @@ class MarkersController extends _$MarkersController {
             // Set the selected marker for popup display
             ref.read(selectedMarkerProvider.notifier).state = 
             flood;
-                // LatLng(flood.lat, flood.lng);
           },
-          child: _getMarkerIcon(flood.severity),
+          child: getMarkerIcon(flood.severity),
         ),
       );
     }).toList();
   }
+
+  // * delelete
+  Future<void> deleteMarker(String markerId) async {
+  try {
+    // Remove from local list immediately for UI responsiveness
+ state = AsyncValue.data(
+      state.value?.where((marker) => marker.id != markerId).toList() ?? []
+    );
+
+    
+    // Delete from Supabase database
+    await Supabase.instance.client
+        .from('flood_reports')
+        .delete()
+        .eq('id', markerId);
+    
+    // Optional: Show success message
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Flood report deleted successfully'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    }
+  } catch (e) {
+    // Revert local change if database deletion fails
+    await _loadMarkers(); // Reload from database
+    
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to delete flood report: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+}
 }
 
  
 
-  /// Get marker icon based on severity
-  Widget _getMarkerIcon(String severity) {
-    Color color;
-    IconData icon;
-    
-    switch (severity.toLowerCase()) {
-      case 'severe':
-        color = Colors.red;
-        icon = Icons.warning;
-        break;
-      case 'blocked':
-        color = Colors.orange;
-        icon = Icons.block;
-        break;
-      case 'passable':
-      default:
-        color = Colors.green;
-        icon = Icons.check_circle;
-        break;
-    }
-    
-    return Container(
-      decoration: BoxDecoration(
-        color: color,
-        shape: BoxShape.circle,
-        border: Border.all(color: Colors.white, width: 2),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.3),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Icon(
-        icon,
-        color: Colors.white,
-        size: 20,
-      ),
-    );
-  }
+ 

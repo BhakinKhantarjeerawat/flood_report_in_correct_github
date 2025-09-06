@@ -35,7 +35,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     final mapCamara = ref.watch(mapCameraProvider);
     final initialCenter = ref.watch(initialCenterProvider);
     final initialZoom = ref.watch(initialZoomProvider);
-    // final markers = ref.watch(markersProvider);
     final selectedMarker = ref.watch(selectedMarkerProvider);
     final markersController = ref.watch(markersControllerProvider);
 
@@ -111,7 +110,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               child: Center(
                 child: MarkerPopup(
                   flood: selectedMarker,
-                  // flood: flood,
                   onClose: () {
                     ref.read(selectedMarkerProvider.notifier).state = null;
                   },
@@ -126,33 +124,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                       alignment: Alignment.bottomRight,
                       child: ElevatedButton(
                           onPressed: () {
-                            // ref.read(markersProvider.notifier).state = [
-                            //   Marker(
-                            //     point: const LatLng(13.7563, 100.5018),
-                            //     child: GestureDetector(
-                            //       onTap: () {
-                            //         ref
-                            //             .read(selectedMarkerProvider.notifier)
-                            //             .state = const LatLng(13.7563, 100.5018);
-                            //       },
-                            //       child: const Icon(Icons.location_on),
-                            //     ),
-                            //   ),
-                            //   Marker(
-                            //     point: const LatLng(13.74607, 100.79339),
-                            //     child: GestureDetector(
-                            //       onTap: () {
-                            //         ref
-                            //                 .read(selectedMarkerProvider.notifier)
-                            //                 .state =
-                            //             const LatLng(13.74607, 100.79339);
-                            //       },
-                            //       child: const Icon(Icons.location_on),
-                            //     ),
-                            //   ),
-                            // ];
                           },
-                          child: const Text('test markers'))),
+                          child: const Text('Add Marker'))),
                 )
               : const Align(
                   alignment: Alignment.center,
