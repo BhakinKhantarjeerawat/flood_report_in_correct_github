@@ -1,9 +1,11 @@
 import 'package:flood_marker/models/flood.dart';
 import 'package:flood_marker/providers/markers_controller_provider.dart';
+import 'package:flood_marker/providers/user_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:uuid/uuid.dart';
 import '../widgets/marker_popup.dart';
 
 class MapScreen extends ConsumerStatefulWidget {
@@ -36,7 +38,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     final initialCenter = ref.watch(initialCenterProvider);
     final initialZoom = ref.watch(initialZoomProvider);
     final selectedMarker = ref.watch(selectedMarkerProvider);
-    final markersController = ref.watch(markersControllerProvider);
     final convertFloodsToMarkers = ref.watch(convertFloodsToMarkersProvider);
 
     return Scaffold(
@@ -100,8 +101,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                       userAgentPackageName: 'com.example.flood_marker',
                     ),
                     // MarkerLayer(markers: markersController.valueOrNull ?? []),
-                    MarkerLayer(markers: convertFloodsToMarkers.valueOrNull ?? []),
-
+                    MarkerLayer(
+                        markers: convertFloodsToMarkers.valueOrNull ?? []),
                   ],
                 ),
               ),
@@ -125,10 +126,34 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   padding: const EdgeInsets.all(16.0),
                   child: Align(
                       alignment: Alignment.bottomRight,
-                      child: ElevatedButton(
-                          onPressed: () {
-                          },
-                          child: const Text('Add Marker'))),
+                      child: Column(
+                        children: [
+                          const SizedBox(height: 34),
+                          ElevatedButton(
+                              onPressed: () {
+                                final currentUser = ref.read(userProvider)!;
+                                debugPrint(currentUser.id);
+                                      String id = const Uuid().v4();
+                                ref
+                                    .read(floodsControllerProvider.notifier)
+                                    .addFlood(// In your UI code:
+                                        Flood(
+                                      id: id,
+                                      userId: currentUser.id,
+                                      lat: 13.7563,
+                                      lng: 100.5018,
+                                      severity: 'blocked',
+                                      depthCm: 25,
+                                      note: 'Road completely flooded',
+                                      // photoUrls: ['photo1.jpg', 'photo2.jpg'],
+                                      createdAt: DateTime.now(),
+                                      expiresAt: DateTime.now()
+                                          .add(const Duration(hours: 6)),
+                                    ));
+                              },
+                              child: const Text('Add Marker')),
+                        ],
+                      )),
                 )
               : const Align(
                   alignment: Alignment.center,

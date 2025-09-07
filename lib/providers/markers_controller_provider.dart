@@ -11,7 +11,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 part 'markers_controller_provider.g.dart';
 
 @riverpod
-class MarkersController extends _$MarkersController {
+class FloodsController extends _$FloodsController {
   @override
   Future<List<Flood>> build() async {
     // ✅ Change to Flood
@@ -23,27 +23,63 @@ class MarkersController extends _$MarkersController {
     return response.map<Flood>((data) => Flood.fromMap(data)).toList();
   }
 
-  Future<void> deleteMarker(String markerId) async {
+  Future<void> deleteFlood(String floodId) async {
     try {
-      // ✅ Now this works correctly
       state = AsyncValue.data(
-          state.value?.where((flood) => flood.id != markerId).toList() ?? []);
+          state.value?.where((flood) => flood.id != floodId).toList() ?? []);
 
       await Supabase.instance.client
           .from('flood_reports')
           .delete()
-          .eq('id', markerId);
+          .eq('id', floodId);
     } catch (e) {
-      // Revert on error
+      debugPrint('error deleteFlood: $e');
       state = await AsyncValue.guard(() => build());
     }
   }
+
+   Future<void> addFlood(Flood newFlood) async {
+    try {
+    state = AsyncValue.data([
+      ...(state.value ?? []),
+      newFlood,
+    ]);
+
+    await Supabase.instance.client
+        .from('flood_reports')
+        .insert(newFlood.toMap());
+
+    } catch (e) {
+      debugPrint('error addFlood: $e');
+      state = await AsyncValue.guard(() => build());
+    }
+  }
+
+  //   Future<void> emptyAllFloods() async {
+  //   try {
+  //     // ✅ Now this works correctly
+  //     // state = AsyncValue.data(
+  //     //     state.value?.where((flood) => flood.id != markerId).toList() ?? []);
+  //     print('throw test');
+  //     throw Exception('test');
+  //     state = const  AsyncData([]);
+
+  //     // await Supabase.instance.client
+  //     //     .from('flood_reports')
+  //     //     .delete()
+  //     //     .eq('id', markerId);
+  //   } catch (e) {
+  //     // Revert on error
+  //     state = await AsyncValue.guard(() => build());
+  //   }
+  // }
+
 }
 
 // / Convert Flood objects to clickable map markers
 @riverpod
 Future<List<Marker>> convertFloodsToMarkers(Ref ref) async {
-  final floods = await ref.watch(markersControllerProvider.future);
+  final floods = await ref.watch(floodsControllerProvider.future);
 
   return floods.map((flood) {
     return Marker(

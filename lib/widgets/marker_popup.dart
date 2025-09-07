@@ -1,7 +1,10 @@
 import 'package:flood_marker/models/flood.dart';
+import 'package:flood_marker/providers/markers_controller_provider.dart';
+import 'package:flood_marker/screeens/map_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class MarkerPopup extends StatelessWidget {
+class MarkerPopup extends ConsumerWidget {
   final Flood flood;
   final VoidCallback onClose;
 
@@ -12,7 +15,7 @@ class MarkerPopup extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Container(
       margin: const EdgeInsets.all(16),
       padding: const EdgeInsets.all(16),
@@ -36,9 +39,9 @@ class MarkerPopup extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-            const  Row(
+              const Row(
                 children: [
-                   Icon(
+                  Icon(
                     Icons.location_on,
                     color: Colors.blue,
                     size: 24,
@@ -62,7 +65,7 @@ class MarkerPopup extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
-          
+
           // Location coordinates
           Row(
             children: [
@@ -72,15 +75,28 @@ class MarkerPopup extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                     Text(
+                    Row(
+                      children: [
+                        IconButton(
+                            onPressed: () {
+                              ref
+                                  .read(floodsControllerProvider.notifier)
+                                  .deleteFlood(flood.id);
+                              ref.read(selectedMarkerProvider.notifier).state =
+                                  null;
+                            },
+                            icon: const Icon(Icons.delete)),
+                      ],
+                    ),
+                    Text(
                       'ID: ${flood.id}',
                       style: const TextStyle(fontSize: 14, color: Colors.grey),
                     ),
-                       Text(
+                    Text(
                       'UserID: ${flood.userId}',
                       style: const TextStyle(fontSize: 14, color: Colors.grey),
                     ),
-                     Text(
+                    Text(
                       'Status: ${flood.status}',
                       style: const TextStyle(fontSize: 14, color: Colors.grey),
                     ),
@@ -101,22 +117,21 @@ class MarkerPopup extends StatelessWidget {
                       'ExpiresAt: ${flood.expiresAt}',
                       style: const TextStyle(fontSize: 14, color: Colors.grey),
                     ),
-                       Text(
+                    Text(
                       'CreatedAt: ${flood.createdAt}',
                       style: const TextStyle(fontSize: 14, color: Colors.grey),
                     ),
-                      Text(
+                    Text(
                       'Confirms: ${flood.confirms}',
                       style: const TextStyle(fontSize: 14, color: Colors.grey),
                     ),
-                      
                   ],
                 ),
               ),
             ],
           ),
           const SizedBox(height: 12),
-          
+
           // Action buttons
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
