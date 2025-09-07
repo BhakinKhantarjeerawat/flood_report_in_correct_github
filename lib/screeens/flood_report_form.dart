@@ -1,3 +1,4 @@
+import 'package:flood_marker/providers/user_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
@@ -9,7 +10,7 @@ import 'package:uuid/uuid.dart';
 import 'dart:io';
 import 'dart:async';
 import '../models/flood.dart';
-import '../providers/user_provider.dart';
+// import '../providers/user_provider.dart';
 import 'dart:math';
 import 'package:latlong2/latlong.dart';
 
@@ -491,7 +492,7 @@ class _FloodReportFormState extends ConsumerState<FloodReportForm> {
       String id = const Uuid().v4();
       
       // Get current user ID from the user provider
-      final currentUser = ref.read(userProvider);
+      final currentUser = ref.read(userControllerProvider).requireValue;
       if (currentUser == null) {
         _showErrorSnackBar('User not authenticated. Please try again.');
         return;

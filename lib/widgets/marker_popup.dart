@@ -17,7 +17,7 @@ class MarkerPopup extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final currentUser = ref.watch(userProvider);
+    final currentUser = ref.watch(userControllerProvider).requireValue;
     return Container(
       margin: const EdgeInsets.all(16),
       padding: const EdgeInsets.all(16),

@@ -6,7 +6,6 @@ import 'package:latlong2/latlong.dart';
 import 'package:flutter_map/flutter_map.dart';
 
 import '../models/flood.dart';
-import '../providers/location_provider.dart';
 import '../providers/marker_popup_provider.dart';
 import '../widgets/marker_filter_toggle.dart';
 

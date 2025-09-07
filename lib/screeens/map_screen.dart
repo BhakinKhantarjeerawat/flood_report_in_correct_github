@@ -1,6 +1,7 @@
 import 'package:flood_marker/models/flood.dart';
 import 'package:flood_marker/providers/floods_controller_provider.dart';
 import 'package:flood_marker/providers/user_provider.dart';
+import 'package:flood_marker/screeens/auth_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -90,7 +91,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                     onMapReady: () async {
                       //todo:
                       await Future.delayed(const Duration(seconds: 2));
+                      if (mounted) {
                       ref.read(isMapReadyProvider.notifier).state = true;
+                      }
                       debugPrint('✅ MAP READY!');
                     },
                   ),
@@ -131,8 +134,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                           const SizedBox(height: 34),
                           ElevatedButton(
                               onPressed: () {
-                                final currentUser = ref.read(userProvider)!;
-                                debugPrint(currentUser.id);
+                                final currentUser = ref.read(userControllerProvider).requireValue;
+                                debugPrint(currentUser!.id);
                                 String id = const Uuid().v4();
                                 ref
                                     .read(floodsControllerProvider.notifier)
@@ -175,10 +178,11 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                                     ),
                                   );
                                 }
-                                
-                                
-                                
-                              }, child: const Text('Update Flood'))
+                              }, child: const Text('Update Flood')),
+                              ElevatedButton(onPressed: (){
+                                ref.read(userControllerProvider.notifier).signOut();
+                              // Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (context) => const AuthScreen()));
+                              }, child: const Text('Sign Out'))
                         ],
                       )),
                 )
