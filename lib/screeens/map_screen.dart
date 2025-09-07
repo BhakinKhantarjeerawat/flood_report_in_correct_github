@@ -1,5 +1,5 @@
 import 'package:flood_marker/models/flood.dart';
-import 'package:flood_marker/providers/markers_controller_provider.dart';
+import 'package:flood_marker/providers/floods_controller_provider.dart';
 import 'package:flood_marker/providers/user_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -133,25 +133,52 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                               onPressed: () {
                                 final currentUser = ref.read(userProvider)!;
                                 debugPrint(currentUser.id);
-                                      String id = const Uuid().v4();
+                                String id = const Uuid().v4();
                                 ref
                                     .read(floodsControllerProvider.notifier)
                                     .addFlood(// In your UI code:
                                         Flood(
                                       id: id,
                                       userId: currentUser.id,
-                                      lat: 13.7563,
-                                      lng: 100.5018,
+                                      lat: 15.1341,
+                                      lng: 104.5134,
                                       severity: 'blocked',
-                                      depthCm: 25,
-                                      note: 'Road completely flooded',
+                                      depthCm: 27,
+                                      note:
+                                          'Road completely flooded but just a short time',
                                       // photoUrls: ['photo1.jpg', 'photo2.jpg'],
                                       createdAt: DateTime.now(),
                                       expiresAt: DateTime.now()
                                           .add(const Duration(hours: 6)),
                                     ));
+
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                          'Flood report added successfully'),
+                                      backgroundColor: Colors.green,
+                                    ),
+                                  );
+                                }
                               },
                               child: const Text('Add Marker')),
+                              ElevatedButton(onPressed: (){
+                                if (selectedMarker != null) {
+                                ref.read(floodsControllerProvider.notifier).updateFlood(selectedMarker.id,
+                                selectedMarker.copyWith(depthCm: 77));
+                                } else {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('No flood marker selected (selected marker == null)'),
+                                      backgroundColor: Colors.red,
+                                    ),
+                                  );
+                                }
+                                
+                                
+                                
+                              }, child: const Text('Update Flood'))
                         ],
                       )),
                 )

@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'markers_controller_provider.dart';
+part of 'floods_controller_provider.dart';
 
 // **************************************************************************
 // RiverpodGenerator
@@ -25,7 +25,7 @@ final convertFloodsToMarkersProvider =
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef ConvertFloodsToMarkersRef = AutoDisposeFutureProviderRef<List<Marker>>;
-String _$floodsControllerHash() => r'8a0a00cd6c3cd4d0955f67c04e486a93802af309';
+String _$floodsControllerHash() => r'606df97a440b8628a76cc64409bf71a1be92f3ff';
 
 /// See also [FloodsController].
 @ProviderFor(FloodsController)

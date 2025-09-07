@@ -8,7 +8,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-part 'markers_controller_provider.g.dart';
+part 'floods_controller_provider.g.dart';
 
 @riverpod
 class FloodsController extends _$FloodsController {
@@ -48,6 +48,28 @@ class FloodsController extends _$FloodsController {
     await Supabase.instance.client
         .from('flood_reports')
         .insert(newFlood.toMap());
+
+    } catch (e) {
+      debugPrint('error addFlood: $e');
+      state = await AsyncValue.guard(() => build());
+    }
+  }
+
+     Future<void> updateFlood(String floodId, Flood updatedFlood) async {
+    try {
+
+     // Optimistic update - replace the flood in local list
+    state = AsyncValue.data(
+      (state.value ?? []).map((flood) {
+        return flood.id == floodId ? updatedFlood : flood;
+      }).toList()
+    );
+
+    // Update in Supabase database
+    await Supabase.instance.client
+        .from('flood_reports')
+        .update(updatedFlood.toMap())
+        .eq('id', floodId);
 
     } catch (e) {
       debugPrint('error addFlood: $e');

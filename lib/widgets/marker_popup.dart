@@ -1,5 +1,5 @@
 import 'package:flood_marker/models/flood.dart';
-import 'package:flood_marker/providers/markers_controller_provider.dart';
+import 'package:flood_marker/providers/floods_controller_provider.dart';
 import 'package:flood_marker/screeens/map_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -79,11 +79,36 @@ class MarkerPopup extends ConsumerWidget {
                       children: [
                         IconButton(
                             onPressed: () {
+                                // if (flood != null) {
+                                ref.read(floodsControllerProvider.notifier).updateFlood(flood.id,
+                                flood.copyWith(depthCm: 99));
+                                    ref.read(selectedMarkerProvider.notifier).state =
+                                  null;
+                                // } else {
+                                //   ScaffoldMessenger.of(context).showSnackBar(
+                                //     const SnackBar(
+                                //       content: Text('No flood marker selected (selected marker == null)'),
+                                //       backgroundColor: Colors.red,
+                                //     ),
+                                //   );
+                                // }
+                            },
+                            icon: const Icon(Icons.update)),
+                               IconButton(
+                            onPressed: () {
                               ref
                                   .read(floodsControllerProvider.notifier)
                                   .deleteFlood(flood.id);
+                                  
                               ref.read(selectedMarkerProvider.notifier).state =
                                   null;
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content:
+                                        Text('Flood report deleted successfully'),
+                                    backgroundColor: Colors.green,
+                                  ),
+                                );
                             },
                             icon: const Icon(Icons.delete)),
                       ],
