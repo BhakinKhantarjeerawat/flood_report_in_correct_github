@@ -20,7 +20,7 @@ const bool useMockLocation = true;
 
 /// Generates random coordinates within Thailand's boundaries
 /// Thailand: 5.6123°N to 20.4651°N, 97.3438°E to 105.6368°E
-LatLng _generateRandomThailandLocation() {
+LatLng generateRandomThailandLocation() {
   final random = Random();
   
   // Thailand boundaries
@@ -96,7 +96,7 @@ class _FloodReportFormState extends ConsumerState<FloodReportForm> {
     try {
       if (useMockLocation) {
         // 🎯 MOCK LOCATION: Using random Thailand location for development
-        final randomLocation = _generateRandomThailandLocation();
+        final randomLocation = generateRandomThailandLocation();
         final double mockLatitude = randomLocation.latitude;
         final double mockLongitude = randomLocation.longitude;
         
@@ -675,18 +675,19 @@ class _FloodReportFormState extends ConsumerState<FloodReportForm> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              //todo:
               // Location Section
-              _buildSectionHeader('📍 Location', Icons.location_on),
-              _buildLocationCard(),
+              buildSectionHeader('📍 Location', Icons.location_on),
+              buildLocationCard(),
               const SizedBox(height: 24),
               
               // Severity Section
-              _buildSectionHeader('⚠️ Severity Level', Icons.warning),
+              buildSectionHeader('⚠️ Severity Level', Icons.warning),
               _buildSeveritySelector(),
               const SizedBox(height: 24),
               
               // Depth Section
-              _buildSectionHeader('🌊 Water Depth (Optional)', Icons.height),
+              buildSectionHeader('🌊 Water Depth (Optional)', Icons.height),
               _buildDepthInput(),
               const SizedBox(height: 24),
               
@@ -709,7 +710,7 @@ class _FloodReportFormState extends ConsumerState<FloodReportForm> {
     );
   }
 
-  Widget _buildSectionHeader(String title, IconData icon) {
+  Widget buildSectionHeader(String title, IconData icon) {
     return Row(
       children: [
         Icon(icon, color: const Color(0xFF1976D2), size: 20),
@@ -726,7 +727,7 @@ class _FloodReportFormState extends ConsumerState<FloodReportForm> {
     );
   }
 
-  Widget _buildLocationCard() {
+  Widget buildLocationCard() {
     return Card(
       elevation: 2,
       child: Padding(

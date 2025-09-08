@@ -5,6 +5,8 @@ import 'package:flood_marker/screeens/map_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+final useMockLocation = true;
+
 class MarkerPopup extends ConsumerWidget {
   final Flood flood;
   final VoidCallback onClose;
@@ -14,6 +16,8 @@ class MarkerPopup extends ConsumerWidget {
     required this.flood,
     required this.onClose,
   });
+
+//  final TextEditingController depthController = TextEditingController();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -80,6 +84,8 @@ class MarkerPopup extends ConsumerWidget {
                     Row(
                       children: [
                         // * update
+              // buildSectionHeader('📍 Location', Icons.location_on),
+              // buildLocationCard(),
                         IconButton(
                             onPressed: () {
                               ref
@@ -172,3 +178,22 @@ class MarkerPopup extends ConsumerWidget {
     );
   }
 }
+
+  Widget buildSectionHeader(String title, IconData icon) {
+    return Row(
+      children: [
+        Icon(icon, color: const Color(0xFF1976D2), size: 20),
+        const SizedBox(width: 8),
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF1976D2),
+          ),
+        ),
+      ],
+    );
+  }
+
+  

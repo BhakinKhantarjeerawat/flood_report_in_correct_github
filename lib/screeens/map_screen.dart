@@ -1,7 +1,7 @@
 import 'package:flood_marker/models/flood.dart';
 import 'package:flood_marker/providers/floods_controller_provider.dart';
 import 'package:flood_marker/providers/user_provider.dart';
-import 'package:flood_marker/screeens/auth_screen.dart';
+import 'package:flood_marker/screeens/flood_report_screen1.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -92,7 +92,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                       //todo:
                       await Future.delayed(const Duration(seconds: 2));
                       if (mounted) {
-                      ref.read(isMapReadyProvider.notifier).state = true;
+                        ref.read(isMapReadyProvider.notifier).state = true;
                       }
                       debugPrint('✅ MAP READY!');
                     },
@@ -134,55 +134,71 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                           const SizedBox(height: 34),
                           ElevatedButton(
                               onPressed: () {
-                                final currentUser = ref.read(userControllerProvider).requireValue;
-                                debugPrint(currentUser!.id);
-                                String id = const Uuid().v4();
-                                ref
-                                    .read(floodsControllerProvider.notifier)
-                                    .addFlood(// In your UI code:
-                                        Flood(
-                                      id: id,
-                                      userId: currentUser.id,
-                                      lat: 15.1341,
-                                      lng: 104.5134,
-                                      severity: 'blocked',
-                                      depthCm: 27,
-                                      note:
-                                          'Road completely flooded but just a short time',
-                                      // photoUrls: ['photo1.jpg', 'photo2.jpg'],
-                                      createdAt: DateTime.now(),
-                                      expiresAt: DateTime.now()
-                                          .add(const Duration(hours: 6)),
-                                    ));
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        const FloodReportScreen1(),
+                                  ),
+                                );
 
-                                if (mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text(
-                                          'Flood report added successfully'),
-                                      backgroundColor: Colors.green,
-                                    ),
-                                  );
-                                }
+                                // final currentUser = ref.read(userControllerProvider).requireValue;
+                                // debugPrint(currentUser!.id);
+                                // String id = const Uuid().v4();
+                                // ref
+                                //     .read(floodsControllerProvider.notifier)
+                                //     .addFlood(// In your UI code:
+                                //         Flood(
+                                //       id: id,
+                                //       userId: currentUser.id,
+                                //       lat: 15.1341,
+                                //       lng: 104.5134,
+                                //       severity: 'blocked',
+                                //       depthCm: 27,
+                                //       note:
+                                //           'Road completely flooded but just a short time',
+                                //       // photoUrls: ['photo1.jpg', 'photo2.jpg'],
+                                //       createdAt: DateTime.now(),
+                                //       expiresAt: DateTime.now()
+                                //           .add(const Duration(hours: 6)),
+                                //     ));
+
+                                // if (mounted) {
+                                //   ScaffoldMessenger.of(context).showSnackBar(
+                                //     const SnackBar(
+                                //       content: Text(
+                                //           'Flood report added successfully'),
+                                //       backgroundColor: Colors.green,
+                                //     ),
+                                //   );
+                                // }
                               },
                               child: const Text('Add Marker')),
-                              ElevatedButton(onPressed: (){
+                          ElevatedButton(
+                              onPressed: () {
                                 if (selectedMarker != null) {
-                                ref.read(floodsControllerProvider.notifier).updateFlood(selectedMarker.id,
-                                selectedMarker.copyWith(depthCm: 77));
+                                  ref
+                                      .read(floodsControllerProvider.notifier)
+                                      .updateFlood(selectedMarker.id,
+                                          selectedMarker.copyWith(depthCm: 77));
                                 } else {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(
-                                      content: Text('No flood marker selected (selected marker == null)'),
+                                      content: Text(
+                                          'No flood marker selected (selected marker == null)'),
                                       backgroundColor: Colors.red,
                                     ),
                                   );
                                 }
-                              }, child: const Text('Update Flood')),
-                              ElevatedButton(onPressed: (){
-                                ref.read(userControllerProvider.notifier).signOut();
-                              // Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (context) => const AuthScreen()));
-                              }, child: const Text('Sign Out'))
+                              },
+                              child: const Text('Update Flood')),
+                          ElevatedButton(
+                              onPressed: () {
+                                ref
+                                    .read(userControllerProvider.notifier)
+                                    .signOut();
+                              },
+                              child: const Text('Sign Out'))
                         ],
                       )),
                 )

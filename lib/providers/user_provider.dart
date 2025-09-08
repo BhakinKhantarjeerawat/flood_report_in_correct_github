@@ -92,7 +92,7 @@ class UserController extends _$UserController {
   Future<void> signInAnonymously() async {
     try {
       state = const AsyncValue.loading();
-      await Future.delayed(const Duration(seconds: 2));
+      // await Future.delayed(const Duration(seconds: 2));
       // throw('error while signIN');
       final response = await Supabase.instance.client.auth.signInAnonymously();
       state = AsyncValue.data(response.user);

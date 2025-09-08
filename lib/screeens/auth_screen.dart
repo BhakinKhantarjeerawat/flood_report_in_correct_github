@@ -134,15 +134,33 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
           ));
         },
         error: (error, stackTrace) {
-          return Center(child: Column(
-            children: [
-              Text(error.toString()),
-              const SizedBox(height: 16),
-              TextButton(onPressed: (){
-                // ref.read(userControllerProvider.notifier).signInAnonymously();
-                ref.invalidate(userControllerProvider);
-              }, child: const Text('Try Again'))
-            ],
+          return Center(child: Container(
+            padding: const EdgeInsets.all(16),
+             width: double.infinity,
+               decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Color(0xFF1976D2),
+                  Color(0xFF1565C0),
+                ],
+              ),
+            ),
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Text(error.toString()),
+                  const SizedBox(height: 16),
+                  ElevatedButton(onPressed: (){
+                    // ref.read(userControllerProvider.notifier).signInAnonymously();
+                    ref.invalidate(userControllerProvider);
+                  }, child: const Text('Try Again'))
+                ],
+              ),
+            ),
           ));
         },
         data: (User? user) {
